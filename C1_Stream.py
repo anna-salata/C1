@@ -121,21 +121,22 @@ st.markdown(f"""
 
 @st.cache_data
 def load_my_data(file_choice):
-    # TUTAJ WPISZ SWOJE ŚCIEŻKI DO PLIKÓW
+    # GitHub nie widzi Twojego dysku C:, widzi tylko pliki w repozytorium.
+    # Wpisujemy same nazwy plików, które tam wrzuciłaś:
     paths = {
-        "Spoczynkowe": r"C:\Users\Anna\Desktop\STUDIA\Zaaw.Lab.Fiz.Medycznej\Ćw1\EKG_wyniki_txt\ekg_spoczynkowe_Alisa.txt",
-        "Wysiłkowe": r"C:\Users\Anna\Desktop\STUDIA\Zaaw.Lab.Fiz.Medycznej\Ćw1\EKG_wyniki_txt\ekg_wysilkowe_AlisaSel.txt"
+        "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
+        "Wysiłkowe": "ekg_wysilkowe_AlisaSet.txt"
     }
     
     selected_path = paths[file_choice]
     
-    # Wczytujemy dane: pomijamy nagłówek (6 linii), separator to tabulator, przecinek to ułamek
+    # Wczytujemy dane bezpośrednio z folderu głównego repozytorium
     data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
     
-    # Nazywamy kolumny zgodnie z tym, co jest w pliku
+    # Nazywamy kolumny
     data.columns = ['czas', 'oddech', 'ecg']
     
-    # Czyszczenie danych (zamiana na liczby i usunięcie błędów)
+    # Czyszczenie danych
     for col in data.columns:
         data[col] = pd.to_numeric(data[col], errors='coerce')
         

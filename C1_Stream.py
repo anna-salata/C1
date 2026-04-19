@@ -28,9 +28,10 @@ from scipy import ndimage
 
 #%%--------------------------------Lokalizacja pliku---------------------------
 
-path_inp="C:/Users/Anna/Desktop/Ćwiczenie1/"
-os.chdir(path_inp)
-
+#path_inp="C:/Users/Anna/Desktop/Ćwiczenie1/"
+#os.chdir(path_inp)
+df = pd.read_csv("ekg_spoczynkowe_Alisa.txt", sep='\t')
+df = pd.read_csv("ekg_wysilkowe_AlisaSel.txt", sep='\t')
 #%%--------------------------------Ustawienia wstępne--------------------------
 
 st.set_page_config(layout="wide")

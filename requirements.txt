@@ -7,7 +7,4 @@ seaborn
 streamlit
 plotly
 neurokit2
-PyEMD
 io 
-emd 
-scipy

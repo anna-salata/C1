@@ -1,14 +1,11 @@
 pandas
-matplotlib.pyplot
+matplotlib
 numpy
 glob
 pathlib
-scipy.signal 
 seaborn
 streamlit
-plotly.express
-plotly.graph_objects
-plotly.subplots
+plotly
 neurokit2
 PyEMD
 io 

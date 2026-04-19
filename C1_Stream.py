@@ -800,13 +800,35 @@ wybrana_kolumna = f'QRS_{idx_segmentu + 1:02d}'
 def highlight_selected(x):
         return f'color: #2ecc71; font-weight: bold; background-color: rgba(46, 284, 113, 0.1);'
 
-# 3. Nakładamy styl tylko na WYBRANĄ kolumnę
-# Wszystkie inne kolumny zostaną domyślne (lub możesz im nadać szary kolor)
-styled_df = df_qrs.style.applymap(
-            highlight_selected, 
-            subset=[wybrana_kolumna]
-).format(precision=3) # Zaokrąglenie dla czytelności
+# --- Bezpieczne i wydajne wyświetlanie tabeli QRS ---
 
+# 1. Definiujemy którą kolumnę podświetlić
+col_to_highlight = wybrana_kolumna if wybrana_kolumna in df_qrs.columns else df_qrs.columns[0]
+
+# 2. Ograniczamy liczbę kolumn dla płynności (szczególnie w wysiłkowym)
+if len(df_qrs.columns) > 15:
+    idx = df_qrs.columns.get_loc(col_to_highlight)
+    start = max(0, idx - 5)
+    end = min(len(df_qrs.columns), idx + 10)
+    tab_view = df_qrs.iloc[:, start:end]
+else:
+    tab_view = df_qrs
+
+# 3. Sprawdzamy dostępną funkcję (map vs applymap) i stylizujemy
+try:
+    if hasattr(tab_view.style, 'map'):
+        # Nowszy Pandas (używany na Streamlit Cloud)
+        styled_df = tab_view.style.map(highlight_selected, subset=[col_to_highlight] if col_to_highlight in tab_view.columns else [])
+    else:
+        # Starszy Pandas (prawdopodobnie u Ciebie lokalnie)
+        styled_df = tab_view.style.applymap(highlight_selected, subset=[col_to_highlight] if col_to_highlight in tab_view.columns else [])
+    
+    # Wyświetlenie tabeli z formatowaniem liczb
+    st.dataframe(styled_df.format(precision=3), use_container_width=True)
+
+except Exception as e:
+    # Plan awaryjny: jeśli stylizacja zawiedzie, wyświetl czyste dane (brak błędu!)
+    st.dataframe(tab_view, use_container_width=True)
 
 # --- Sekcja wyświetlania tabeli (Bezpieczna dla wysiłkowego) ---
 

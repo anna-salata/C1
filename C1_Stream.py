@@ -125,7 +125,7 @@ def load_my_data(file_choice):
     # Wpisujemy same nazwy plików, które tam wrzuciłaś:
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
-        "Wysiłkowe": "ekg_wysilkowe_AlisaSet.txt"
+        "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt"
     }
     
     selected_path = paths[file_choice]

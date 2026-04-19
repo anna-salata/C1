@@ -810,27 +810,33 @@ styled_df = df_qrs.style.applymap(
 
 # --- Sekcja wyświetlania tabeli (Bezpieczna dla wysiłkowego) ---
 
-# Sprawdzamy, czy kolumna wybrana do podświetlenia w ogóle istnieje
-col_to_highlight = wybrana_kolumna if wybrana_kolumna in df_qrs.columns else None
+# --- Sekcja wyświetlania tabeli QRS (Wersja ULTRA-STABILNA) ---
 
-# Jeśli tabela jest gigantyczna (wysiłkowe), bierzemy tylko otoczenie wybranego QRS
-if len(df_qrs.columns) > 30:
-    idx = df_qrs.columns.get_loc(wybrana_kolumna)
-    start_col = max(0, idx - 10)
-    end_col = min(len(df_qrs.columns), idx + 20)
-    tab_view = df_qrs.iloc[:, start_col:end_col]
-    st.warning(f"Zbyt dużo danych (Wysiłkowe). Wyświetlam otoczenie wybranego załamka: {wybrana_kolumna}")
+# 1. Sprawdzamy czy wybrana kolumna jest w danych
+col_to_highlight = wybrana_kolumna if wybrana_kolumna in df_qrs.columns else df_qrs.columns[0]
+
+# 2. Ograniczamy widok (żeby nie przekroczyć limitu 500k komórek)
+if len(df_qrs.columns) > 20:
+    idx = df_qrs.columns.get_loc(col_to_highlight)
+    start = max(0, idx - 5)
+    end = min(len(df_qrs.columns), idx + 10)
+    tab_view = df_qrs.iloc[:, start:end]
+    st.info(f"💡 Wyświetlam fragment tabeli (uderzenia {start} do {end}) dla lepszej płynności.")
 else:
     tab_view = df_qrs
 
-# Stylizujemy tylko tę mniejszą tabelę
-styled_df = tab_view.style.applymap(
-    highlight_selected, 
-    subset=[wybrana_kolumna] if col_to_highlight in tab_view.columns else []
-).format(precision=3)
-
-# TO JEST JEDYNE WYWOŁANIE DATAFRAME - usuń wszystkie inne styled_df.data
-st.dataframe(styled_df, use_container_width=True)
+# 3. Bezpieczne kolorowanie (obsługa map i applymap)
+try:
+    if hasattr(tab_view.style, 'map'):
+        styled_df = tab_view.style.map(highlight_selected, subset=[col_to_highlight] if col_to_highlight in tab_view.columns else [])
+    else:
+        styled_df = tab_view.style.applymap(highlight_selected, subset=[col_to_highlight] if col_to_highlight in tab_view.columns else [])
+    
+    st.dataframe(styled_df.format(precision=3), use_container_width=True)
+except Exception as e:
+    # Jeśli stylizacja zawiedzie, pokazujemy czystą tabelę - lepsze to niż czerwony błąd!
+    st.dataframe(tab_view, use_container_width=True)
+    st.warning("Tabela wyświetlona bez podświetlenia ze względu na limit pamięci.")
 
 #%%-------------------------SEKCJA 4 - EMD I EKSPORT---------------------------
 # --- KONFIGURACJA KOLORÓW I STYLU ---

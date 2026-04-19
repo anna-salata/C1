@@ -6,4 +6,4 @@ streamlit
 seaborn
 plotly
 neurokit2
-EMD-signal
+EMD

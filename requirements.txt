@@ -1,0 +1,16 @@
+pandas
+matplotlib.pyplot
+numpy
+glob
+pathlib
+scipy.signal 
+seaborn
+streamlit
+plotly.express
+plotly.graph_objects
+plotly.subplots
+neurokit2
+PyEMD
+io 
+emd 
+scipy

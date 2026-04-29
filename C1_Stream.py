@@ -117,35 +117,37 @@ st.markdown(f"""
     
 #%%--------------------------------Ładowanie pliku-----------------------------
 
-# --- Sekcja wczytywania danych (Podmień linie 80-111) ---
-
 @st.cache_data
 def load_my_data(file_choice):
     # GitHub nie widzi Twojego dysku C:, widzi tylko pliki w repozytorium.
     # Wpisujemy same nazwy plików, które tam wrzuciłaś:
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
-        "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt"
+        "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt",
+        "Oddech standardowy": "ekg+oddech_stand.txt",
+        "Oddech kontrolowany (co 10 sekund)": "EKG+oddech_co_10_sek.txt"
     }
     
     selected_path = paths[file_choice]
     
-    # Wczytujemy dane bezpośrednio z folderu głównego repozytorium
-    data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
+    # Dla nowych plików z oddechem (standardowy i co 10s)
+    if "oddech" in file_choice.lower():
+        # Te pliki mają zazwyczaj 3 kolumny: czas, oddech, ekg
+        data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
+        data.columns = ['czas', 'oddech', 'ecg']
+    else:
+        # Oryginalne wczytywanie dla poprzednich plików
+        data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
+        data.columns = ['czas', 'oddech', 'ecg']
     
-    # Nazywamy kolumny
-    data.columns = ['czas', 'oddech', 'ecg']
-    
-    # Czyszczenie danych
     for col in data.columns:
         data[col] = pd.to_numeric(data[col], errors='coerce')
         
     return data.dropna()
 
-# --- Panel sterowania w aplikacji ---
-wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", ["Spoczynkowe", "Wysiłkowe"])
-
-# Wywołanie funkcji - dane trafią do zmiennej df, której używa reszta kodu
+# Aktualizacja paska bocznego
+wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", 
+                             ["Spoczynkowe", "Wysiłkowe", "Oddech standardowy", "Oddech co 10 sek"])
 df = load_my_data(wybor)
 
 # --- Koniec sekcji wczytywania ---
@@ -985,7 +987,84 @@ with col_main:
 
 st.markdown(f'<hr style="margin-top: 20px; height:5px; border:none; background-color:{lekki_szary};"/>', unsafe_allow_html=True)
 
+#%%-------------------------SEKCJA 5 - SYNCHROGRAMY---------------------------
+import scipy.signal as signal
 
+st.markdown(f"""<hr style="margin-top: 30px; height:6px; border:none; background-color:{niebieski_jasny};"/>""", unsafe_allow_html=True)
+st.markdown(f'<p style="font-size: 26px; font-weight: bold; color:{niebieski_jasny};">Synchronizacja Sercowo-Oddechowa (Synchrogram)</p>', unsafe_allow_html=True)
+
+if 'df' in locals():
+    # 1. Przygotowanie sygnału oddechu - wygładzamy, żeby faza była stabilna
+    resp_signal = df['oddech'].values
+    resp_filtered = savgol_filter(resp_signal, 101, 3) 
+    
+    # 2. Obliczanie fazy chwilowej (Transformata Hilberta)
+    # Oddech to sygnał oscylacyjny, Hilbert pozwala wyznaczyć jego fazę w czasie
+    analytic_signal = signal.hilbert(resp_filtered)
+    phase = np.angle(analytic_signal) # Zakres [-pi, pi]
+    
+    # 3. Pobranie wartości fazy w momentach wystąpienia załamków R (peaks)
+    if len(peaks) > 0:
+        phases_at_r = phase[peaks]
+        times_at_r = df['czas'].iloc[peaks].values
+        
+        col_s1, col_s2 = st.columns([1, 1])
+        
+        with col_s1:
+            st.markdown("###### Synchrogram Czasowy")
+            fig_sync = go.Figure()
+            fig_sync.add_trace(go.Scatter(
+                x=times_at_r, 
+                y=phases_at_r,
+                mode='markers',
+                marker=dict(color=zielony_neon, size=6, opacity=0.7),
+                name='Faza R w cyklu oddechowym'
+            ))
+            fig_sync.update_layout(
+                height=450, template="plotly_dark",
+                xaxis_title="Czas badania [s]",
+                yaxis_title="Faza oddechu [rad]",
+                yaxis=dict(
+                    tickvals=[-np.pi, -np.pi/2, 0, np.pi/2, np.pi],
+                    ticktext=["-π (Wdech)", "-π/2", "0", "π/2", "π (Wydech)"]
+                )
+            )
+            st.plotly_chart(fig_sync, use_container_width=True)
+
+        with col_s2:
+            st.markdown("###### Synchrogram Kołowy (Rozkład Fazowy)")
+            # Przeliczamy radiany na stopnie dla wykresu polarnego Plotly
+            theta_deg = np.degrees(phases_at_r)
+            # Normalizacja do zakresu [0, 360]
+            theta_deg = [t if t >= 0 else t + 360 for t in theta_deg]
+            
+            fig_polar = go.Figure()
+            fig_polar.add_trace(go.Scatterpolar(
+                r=[1] * len(theta_deg), # Punkty na obwodzie koła
+                theta=theta_deg,
+                mode='markers',
+                marker=dict(color=niebieski_jasny, size=10, opacity=0.6, line=dict(color='white', width=1)),
+            ))
+            fig_polar.update_layout(
+                height=450,
+                template="plotly_dark",
+                polar=dict(
+                    angularaxis=dict(
+                        direction="clockwise",
+                        period=360,
+                        ticks="outside",
+                        tickvals=[0, 90, 180, 270],
+                        ticktext=["0 (Max Wdechu)", "π/2", "π (Max Wydechu)", "3π/2"]
+                    ),
+                    radialaxis=dict(visible=False) # Ukrywamy promienie, bo r=1
+                ),
+                showlegend=False
+            )
+            st.plotly_chart(fig_polar, use_container_width=True)
+            
+        st.info("💡 **Interpretacja:** Jeśli kropki na wykresie kołowym grupują się w jednym miejscu, oznacza to silną synchronizację (serce bije zawsze w tej samej fazie oddechu). Rozproszenie oznacza brak stałej relacji fazowej.")
+    else:
+        st.warning("⚠️ Brak wykrytych załamków R. Ustaw parametry w Sekcji 3, aby zobaczyć synchrogram.")
 
 
 

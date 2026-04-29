@@ -124,8 +124,8 @@ def load_my_data(file_choice):
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
         "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt",
-        "Oddech standardowy": "ekg+oddech stand.txt",
-        "Oddech co 10 sek": "EKG+oddech co 10 sek.txt" # Tutaj często jest błąd (EKG vs ekg)
+        "Oddech standardowy": "ekg+oddech_stand.txt",
+        "Oddech co 10 sek": "EKG+oddech_co_10_sek.txt" # Tutaj często jest błąd (EKG vs ekg)
     }
     
     selected_path = paths[file_choice]
@@ -155,7 +155,7 @@ def load_my_data(file_choice):
 
 # Wybór w sidebarze
 wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", 
-                             ["Spoczynkowe", "Wysiłkowe", "Oddech standardowy", "Oddech co 10 sek"])
+                             ["Spoczynkowe", "Wysiłkowe", "Oddech Standardowy", "Oddech Kontrolowany (co 10 sekund)"])
 df = load_my_data(wybor)
 
 # --- Koniec sekcji wczytywania ---

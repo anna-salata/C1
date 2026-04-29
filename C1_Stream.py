@@ -993,33 +993,35 @@ with tab1:
 
 #%%-------------------------SEKCJA 5 - ---------------------------
 with tab2:
-       # --- BEZPIECZNE SPRAWDZENIE TYPU ANALIZY ---
-        # Sprawdzamy obie możliwe nazwy kolumn, aby uniknąć błędu KeyError
-        is_nowy = False
-        if 'typ' in df.columns:
-            is_nowy = df['typ'].iloc[0] == 'nowy'
-        elif 'typ_analizy' in df.columns:
-            is_nowy = df['typ_analizy'].iloc[0] == 'nowy'
+       # Usuwamy na chwilę warunki IF, żeby sprawdzić czy wykresy się wygenerują
+        # --- BOCZNY PANEL ---
+        st.sidebar.markdown("### 🛠️ Parametry detekcji")
+        
+        prog_oddech = st.sidebar.slider("Próg pików oddechu", 0.0, 2.0, 0.1, 0.01)
+        dist_oddech = st.sidebar.slider("Minimalny dystans oddechu [próbki]", 100, 5000, 800, 100)
+        
+        prog_ekg = st.sidebar.slider("Próg R-peaks (EKG)", 0.0, 2.0, 1.5, 0.1)
+        dist_ekg = st.sidebar.slider("Minimalny dystans R-peaks [próbki]", 100, 2000, 400, 50)
+        
+        st.sidebar.markdown("### 📈 Synchrogram")
+        faza_levels = st.sidebar.slider("Liczba poziomów fazy", 36, 180, 72)
 
-        if is_nowy:
-            # --- BOCZNY PANEL DLA ZAKŁADKI ODDECHOWEJ ---
-            # Te elementy pojawią się w sidebarze po lewej (jak na wzorze)
-            st.sidebar.markdown("### 🛠️ Parametry detekcji")
-            
-            prog_oddech = st.sidebar.slider("Próg pików oddechu", 0.0, 2.0, 0.1, 0.01)
-            dist_oddech = st.sidebar.slider("Minimalny dystans oddechu [próbki]", 100, 5000, 800, 100)
-            
-            prog_ekg = st.sidebar.slider("Próg R-peaks (EKG)", 0.0, 2.0, 1.5, 0.1)
-            dist_ekg = st.sidebar.slider("Minimalny dystans R-peaks [próbki]", 100, 2000, 400, 50)
-            
-            st.sidebar.markdown("### 📈 Synchrogram")
-            faza_levels = st.sidebar.slider("Liczba poziomów fazy", 36, 180, 72)
-
-            # --- PRZYGOTOWANIE DANYCH ---
-            fs = 1000
-            # Wygładzanie sygnału oddechowego
+        # --- PRZYGOTOWANIE DANYCH ---
+        # Upewniamy się, że kolumny istnieją w Twoim df
+        if 'oddech' in df.columns and 'ecg' in df.columns:
             resp_smooth = savgol_filter(df['oddech'].values, 501, 3)
             ecg_signal = df['ecg'].values
+            
+            peaks_resp, _ = find_peaks(resp_smooth, height=prog_oddech, distance=dist_oddech)
+            peaks_r, _ = find_peaks(ecg_signal, height=prog_ekg, distance=dist_ekg)
+            
+            analytic_signal = hilbert(resp_smooth)
+            phase_2pi = np.mod(np.angle(analytic_signal), 2 * np.pi)
+
+            # TUTAJ WSTAW KOD WYKRESÓW (fig1, fig2, fig3, fig4), który wysłałem wcześniej
+            # ...
+        else:
+            st.error("Błąd: Nie znaleziono kolumn 'oddech' lub 'ecg' w wczytanym pliku!")
             
             # Detekcja pików na podstawie wartości z suwaków
             peaks_resp, _ = find_peaks(resp_smooth, height=prog_oddech, distance=dist_oddech)

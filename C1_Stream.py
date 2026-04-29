@@ -19,9 +19,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import neurokit2 as nk
-from PyEMD import EMD as emd
+from PyEMD import EMD
 import io  # Potrzebne do eksportu pliku tekstowego
-
+import emd 
 from scipy import ndimage
 
 
@@ -116,52 +116,39 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
     
 #%%--------------------------------Ładowanie pliku-----------------------------
-import os
+
+# --- Sekcja wczytywania danych (Podmień linie 80-111) ---
 
 @st.cache_data
 def load_my_data(file_choice):
-    # KLUCZE (po lewej) muszą być identyczne jak napisy w selectbox!
-    # WARTOŚCI (po prawej) to Twoje nowe nazwy plików z podkreślnikami
+    # GitHub nie widzi Twojego dysku C:, widzi tylko pliki w repozytorium.
+    # Wpisujemy same nazwy plików, które tam wrzuciłaś:
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
-        "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt",
-        "Oddech Standardowy": "ekg+oddech_stand.txt",
-        "Oddech Kontrolowany (co 10 sekund)": "EKG+oddech_co_10_sek.txt"
+        "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt"
     }
     
     selected_path = paths[file_choice]
     
-    if not os.path.exists(selected_path):
-        st.error(f"❌ Nie znaleziono pliku: **{selected_path}**")
-        return None
-
-    try:
-        data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
+    # Wczytujemy dane bezpośrednio z folderu głównego repozytorium
+    data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
+    
+    # Nazywamy kolumny
+    data.columns = ['czas', 'oddech', 'ecg']
+    
+    # Czyszczenie danych
+    for col in data.columns:
+        data[col] = pd.to_numeric(data[col], errors='coerce')
         
-        if data.shape[1] == 3:
-            # NOWE PLIKI: 0-Czas, 1-Oddech, 2-EKG
-            data.columns = ['czas', 'oddech', 'ecg']
-            data['typ'] = 'nowy' # Oznaczamy typ pliku
-        else:
-            # STARE PLIKI: 0-Czas, 1-EKG
-            data.columns = ['czas', 'ecg']
-            data['oddech'] = 0
-            data['typ'] = 'stary'
-            
-        for col in ['czas', 'oddech', 'ecg']:
-            data[col] = pd.to_numeric(data[col], errors='coerce')
-        return data.dropna()
-    except Exception as e:
-        st.error(f"Błąd: {e}")
-        return None
+    return data.dropna()
 
-# Sidebar - napisy muszą być DOKŁADNIE takie jak klucze w paths
-wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", 
-                             ["Spoczynkowe", "Wysiłkowe", "Oddech Standardowy", "Oddech Kontrolowany (co 10 sekund)"])
+# --- Panel sterowania w aplikacji ---
+wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", ["Spoczynkowe", "Wysiłkowe"])
+
+# Wywołanie funkcji - dane trafią do zmiennej df, której używa reszta kodu
 df = load_my_data(wybor)
 
 # --- Koniec sekcji wczytywania ---
-
 
 #%%---------------------------------Tytuł i ramka------------------------------
 st.markdown(f"""
@@ -998,72 +985,6 @@ with col_main:
 
 st.markdown(f'<hr style="margin-top: 20px; height:5px; border:none; background-color:{lekki_szary};"/>', unsafe_allow_html=True)
 
-#%%-------------------------SEKCJA 5 - SYNCHROGRAMY---------------------------
-import scipy.signal as signal
-
-st.markdown(f'<p style="font-size: 26px; font-weight: bold; color:{niebieski_jasny};">Synchronizacja Sercowo-Oddechowa</p>', unsafe_allow_html=True)
-
-if df is not None and not (df['oddech'] == 0).all():
-    # Pobranie sygnałów (kolumny już przypisane w load_my_data)
-    ecg_signal = df['ecg'].values
-    resp_raw = df['oddech'].values
-    
-    # Mocne wygładzenie, aby uzyskać "falę" oddechu
-    resp_smooth = savgol_filter(resp_raw, 501, 3) 
-    
-    # Detekcja pików R - tylko te najwyższe (>1.5mV)
-    clean_peaks_r, _ = signal.find_peaks(ecg_signal, height=1.5, distance=500)
-    
-    # Detekcja szczytów oddechu (wdechów)
-    peaks_resp, _ = signal.find_peaks(resp_smooth, distance=3000, prominence=0.01)
-
-    if len(clean_peaks_r) > 0:
-        # WYKRES 1: ODDECH (FALA)
-        st.subheader("1. Krzywa oddechowa (FALA) z zaznaczonymi szczytami")
-        fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Fala oddechu", line=dict(color=niebieski_jasny, width=3)))
-        fig1.add_trace(go.Scatter(x=df['czas'].iloc[peaks_resp], y=resp_smooth[peaks_resp], 
-                                 mode='markers', name="Szczyt wdechu", marker=dict(color="red", size=10)))
-        fig1.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="mV (Oddech)")
-        st.plotly_chart(fig1, use_container_width=True)
-
-        # WYKRES 2: EKG (TYLKO PIKI R)
-        st.subheader("2. Sygnał EKG (Tylko piki R > 1.5mV)")
-        fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=df['czas'], y=ecg_signal, name="EKG", line=dict(color="white", width=0.8)))
-        fig2.add_trace(go.Scatter(x=df['czas'].iloc[clean_peaks_r], y=ecg_signal[clean_peaks_r], 
-                                 mode='markers', name="Pik R", marker=dict(color=zielony_neon, size=8)))
-        fig2.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="mV (EKG)")
-        st.plotly_chart(fig2, use_container_width=True)
-
-        # WYKRES 3: PIKI R NA FALI ODDECHU
-        st.subheader("3. Pozycje uderzeń serca (R) na fali oddechowej")
-        fig3 = go.Figure()
-        fig3.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Fala oddechu", line=dict(color=niebieski_jasny), opacity=0.4))
-        fig3.add_trace(go.Scatter(x=df['czas'].iloc[clean_peaks_r], y=resp_smooth[clean_peaks_r], 
-                                 mode='markers', name="Moment uderzenia serca (R)", 
-                                 marker=dict(color=zielony_neon, size=9, symbol="x")))
-        fig3.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Amplituda oddechu")
-        st.plotly_chart(fig3, use_container_width=True)
-
-        # WYKRES 4: SYNCHROGRAM (0-2PI)
-        st.subheader("4. Synchrogram (Faza oddechu 0 - 2π)")
-        analytic_signal = signal.hilbert(resp_smooth)
-        phase_2pi = np.mod(np.angle(analytic_signal), 2 * np.pi)
-        
-        fig4 = go.Figure()
-        fig4.add_trace(go.Scatter(x=df['czas'].iloc[clean_peaks_r], y=phase_2pi[clean_peaks_r], 
-                                 mode='markers', marker=dict(color=zielony_neon, size=6)))
-        fig4.update_layout(
-            height=450, template="plotly_dark",
-            xaxis_title="Czas [s]", yaxis_title="Faza [rad]",
-            yaxis=dict(tickvals=[0, np.pi, 2*np.pi], ticktext=["0", "π", "2π"], range=[-0.2, 6.5])
-        )
-        st.plotly_chart(fig4, use_container_width=True)
-    else:
-        st.warning("Nie znaleziono wysokich pików R. Dostosuj parametr height w signal.find_peaks.")
-else:
-    st.info("Wybierz plik z oddechem, aby zobaczyć synchrogramy.")
 
 
 

@@ -119,27 +119,44 @@ st.markdown(f"""
 
 @st.cache_data
 def load_my_data(file_choice):
+    # SŁOWNIK ŚCIEŻEK - Upewnij się, że nazwy plików na GitHub są IDENTYCZNE (wielkość liter!)
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
         "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt",
-        "Oddech standardowy": "ekg+oddech stand.txt",
-        "Oddech co 10 sek": "EKG+oddech co 10 sek.txt"
+        "Oddech standardowy": "ekg+oddech_stand.txt",
+        "Oddech kontrolowany (co 10 sekund)": "EKG+oddech_co_10_sek.txt"
     }
     
     selected_path = paths[file_choice]
     
-    # Wczytujemy dane (zakładamy 3 kolumny: czas, oddech, ecg)
+    # Zabezpieczenie przed brakiem pliku na serwerze
+    if not os.path.exists(selected_path):
+        st.error(f"Nie znaleziono pliku: {selected_path}. Sprawdź wielkość liter w nazwie pliku na GitHubie!")
+        return None
+
+    # Wczytanie danych
     data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
-    data.columns = ['czas', 'oddech', 'ecg']
+    
+    # DYNAMICZNE DOPASOWANIE KOLUMN
+    if data.shape[1] == 3:
+        # Pliki z oddechem (nowe)
+        # Z Twoich plików wynika, że kolejność to: 0:czas, 1:ecg, 2:oddech
+        data.columns = ['czas', 'ecg', 'oddech']
+    else:
+        # Pliki stare (tylko czas i ecg)
+        data.columns = ['czas', 'ecg']
+        # Tworzymy sztuczną kolumnę oddech z zerami, żeby reszta kodu (np. wykresy) się nie psuła
+        data['oddech'] = 0 
     
     for col in data.columns:
         data[col] = pd.to_numeric(data[col], errors='coerce')
         
     return data.dropna()
 
-# Nowa lista wyboru w sidebarze
+# Wybór w sidebarze
 wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", 
-                             ["Spoczynkowe", "Wysiłkowe", "Oddech standardowy", "Oddech co 10 sek"])
+                             ["Spoczynkowe", "Wysiłkowe", "Oddech standardowy", "Oddech kontrolowany (co 10 sekund)"])
+
 df = load_my_data(wybor)
 
 # --- Koniec sekcji wczytywania ---

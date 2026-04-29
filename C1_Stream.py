@@ -1033,21 +1033,37 @@ with tab2:
         # 2. WYKRESY (Oddech, EKG, Mix)
         # =====================================================================
         
-        # --- Wykres 1: Oddech ---
+       # =========================
+        # 1. ODDECH + PIKI (Poprawione)
+        # =========================
         st.markdown("### 🫁 Sygnał oddechowy")
-        fig_resp = go.Figure()
-        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color=niebieski_jasny)))
-        fig_resp.add_trace(go.Scatter(x=czas[peaks_resp], y=oddech[peaks_resp], mode='markers', name='Piki oddechu', marker=dict(color='red', size=8)))
-        fig_resp.update_layout(template="plotly_dark", height=300)
-        st.plotly_chart(fig_resp, use_container_width=True)
 
-        # --- Wykres 2: EKG ---
+        # Zwiększamy distance i dodajemy prominence
+        # Przy fs=1000, jeden oddech trwa ok. 3-5 sekund, więc 1000-2000 próbek przerwy jest bezpieczne
+        peaks_resp, _ = find_peaks(
+            oddech,
+            distance=1500,           # min. 1.5 sekundy przerwy między oddechami
+            prominence=0.2,          # pik musi wyraźnie wystawać
+            height=np.mean(oddech)   # nadal musi być powyżej średniej
+        )
+
+        # ... (reszta kodu fig_resp bez zmian) ...
+
+        # =========================
+        # 2. EKG + R PEAKS (Poprawione)
+        # =========================
         st.markdown("### ❤️ EKG + R-peaki")
-        fig_ecg = go.Figure()
-        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG', line=dict(color=zielony_neon)))
-        fig_ecg.add_trace(go.Scatter(x=czas[peaks_ecg], y=ecg[peaks_ecg], mode='markers', name='R-peaki', marker=dict(color='red', size=6)))
-        fig_ecg.update_layout(template="plotly_dark", height=300)
-        st.plotly_chart(fig_ecg, use_container_width=True)
+
+        # R-peak jest bardzo szybki, więc distance może być mniejszy (np. 500ms)
+        # Ale musi mieć duży prominence, żeby nie łapać załamków T
+        peaks_ecg, _ = find_peaks(
+            ecg,
+            distance=500,            # min. 0.5 sekundy między uderzeniami serca
+            prominence=0.5,          # kluczowe dla EKG, by ignorować mniejsze górki
+            height=np.mean(ecg)
+        )
+
+        # ... (reszta kodu fig_ecg bez zmian) ...
 
         # --- Wykres 3: R na oddechu ---
         st.markdown("### 🔄 Oddech + R-peaki")

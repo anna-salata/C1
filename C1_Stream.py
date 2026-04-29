@@ -1058,7 +1058,7 @@ with tab2:
             # 4. Synchrogram
             fig4 = go.Figure()
             # Dodajemy pionowe linie cyklu (od wdechu do wdechu)
-        for p in peaks_resp:
+            for p in peaks_resp:
                 fig4.add_vline(x=df['czas'].iloc[p], line_width=1, line_dash="dash", line_color="blue", opacity=0.3)
             
             fig4.add_trace(go.Scatter(x=df['czas'].iloc[peaks_r], y=phase_2pi[peaks_r], 

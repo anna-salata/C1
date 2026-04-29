@@ -1034,25 +1034,22 @@ with tab2:
         fig_resp.update_layout(template="plotly_dark", height=350)
         st.plotly_chart(fig_resp, use_container_width=True)
 
-        # =====================================================================
-        # 2. EKG + R PEAKS (Wersja z poprawioną czułością)
+       # =====================================================================
+        # 2. EKG + R PEAKS (Wersja z filtrem progu 0.1 mV)
         # =====================================================================
         st.markdown("### ❤️ EKG + R-peaki")
 
-        # 1. Obliczamy próg dynamicznie (80% z 95. percentyla sygnału)
-        # To zadziała znacznie lepiej niż zwykła średnia dla niskich sygnałów
-        prog_czulosci = np.percentile(ecg, 95) * 0.8
-
+        # Ustawiamy parametry tak, aby ignorować piki mniejsze niż 0.1
         peaks_ecg, _ = find_peaks(
             ecg,
-            distance=40,              # dystans zostawiamy (ok. 0.4s przy fs=100)
-            prominence=0.05,          # ZMNIEJSZONY prominence dla niskich sygnałów
-            height=prog_czulosci      # dynamiczny próg
+            distance=40,              # min. 0.4s przerwy (przy fs=100)
+            height=0.1,               # IGNORUJEMY wszystko poniżej 0.1 mV
+            prominence=0.05           # pik musi wyraźnie wystawać z szumu
         )
 
-        # Sprawdzenie w konsoli/Streamlit czy cokolwiek znalazło
+        # Wyświetlanie ostrzeżenia, jeśli piki znikną całkowicie
         if len(peaks_ecg) == 0:
-            st.warning("⚠️ Nie wykryto pików R. Spróbuj obniżyć 'Próg R-peaks' w panelu bocznym.")
+            st.warning("⚠️ Nie wykryto pików powyżej 0.1 mV. Sprawdź jakość sygnału.")
 
         fig_ecg = go.Figure()
         fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG', line=dict(color='#39FF14')))
@@ -1061,11 +1058,15 @@ with tab2:
             y=ecg[peaks_ecg],
             mode='markers',
             name='R-peaki',
-            marker=dict(color='red', size=6)
+            marker=dict(color='red', size=7, line=dict(width=1, color='white'))
         ))
-        fig_ecg.update_layout(template="plotly_dark", height=350)
+        
+        fig_ecg.update_layout(
+            template="plotly_dark", 
+            height=350,
+            yaxis=dict(range=[-0.2, 0.3]) # stały zakres osi Y dla lepszej czytelności
+        )
         st.plotly_chart(fig_ecg, use_container_width=True)
-
         # =====================================================================
         # 3. ODDECH + R PEAKS
         # =====================================================================

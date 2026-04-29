@@ -1003,78 +1003,48 @@ st.markdown(f"""<hr style="margin-top: 30px; height:6px; border:none; background
 st.markdown(f'<p style="font-size: 26px; font-weight: bold; color:{niebieski_jasny};">Synchronizacja Sercowo-Oddechowa (Synchrogram)</p>', unsafe_allow_html=True)
 
 if 'df' in locals():
-    # 1. Przygotowanie sygnału oddechu - wygładzamy, żeby faza była stabilna
+    # --- PRZYGOTOWANIE DANYCH ---
     resp_signal = df['oddech'].values
-    resp_filtered = savgol_filter(resp_signal, 101, 3) 
+    resp_smooth = savgol_filter(resp_signal, 101, 3) 
     
-    # 2. Obliczanie fazy chwilowej (Transformata Hilberta)
-    # Oddech to sygnał oscylacyjny, Hilbert pozwala wyznaczyć jego fazę w czasie
-    analytic_signal = signal.hilbert(resp_filtered)
-    phase = np.angle(analytic_signal) # Zakres [-pi, pi]
-    
-    # 3. Pobranie wartości fazy w momentach wystąpienia załamków R (peaks)
+    # Detekcja maksimów oddechowych (szczyty wdechu)
+    # distance dopasowany tak, by nie łapać szumów (np. 2000 ms przy fs=1000)
+    peaks_resp, _ = signal.find_peaks(resp_smooth, distance=2000, prominence=0.05)
+
     if len(peaks) > 0:
-        phases_at_r = phase[peaks]
-        times_at_r = df['czas'].iloc[peaks].values
-        
-        col_s1, col_s2 = st.columns([1, 1])
-        
-        with col_s1:
-            st.markdown("###### Synchrogram Czasowy")
-            fig_sync = go.Figure()
-            fig_sync.add_trace(go.Scatter(
-                x=times_at_r, 
-                y=phases_at_r,
-                mode='markers',
-                marker=dict(color=zielony_neon, size=6, opacity=0.7),
-                name='Faza R w cyklu oddechowym'
-            ))
-            fig_sync.update_layout(
-                height=450, template="plotly_dark",
-                xaxis_title="Czas badania [s]",
-                yaxis_title="Faza oddechu [rad]",
-                yaxis=dict(
-                    tickvals=[-np.pi, -np.pi/2, 0, np.pi/2, np.pi],
-                    ticktext=["-π (Wdech)", "-π/2", "0", "π/2", "π (Wydech)"]
-                )
-            )
-            st.plotly_chart(fig_sync, use_container_width=True)
+        # --- WYKRES 1: ODDECH + MAKSIMA ---
+        st.subheader("1. Sygnał oddechowy (mV) z zaznaczonymi szczytami")
+        fig1 = go.Figure()
+        fig1.add_trace(go.Scatter(x=df['czas'], y=df['oddech'], name="Oddech", line=dict(color=niebieski_jasny)))
+        fig1.add_trace(go.Scatter(x=df['czas'].iloc[peaks_resp], y=df['oddech'].iloc[peaks_resp], 
+                                 mode='markers', name="Maksimum oddechowe", marker=dict(color="red", size=8)))
+        fig1.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Potencjał [mV]")
+        st.plotly_chart(fig1, use_container_width=True)
 
-        with col_s2:
-            st.markdown("###### Synchrogram Kołowy (Rozkład Fazowy)")
-            # Przeliczamy radiany na stopnie dla wykresu polarnego Plotly
-            theta_deg = np.degrees(phases_at_r)
-            # Normalizacja do zakresu [0, 360]
-            theta_deg = [t if t >= 0 else t + 360 for t in theta_deg]
-            
-            fig_polar = go.Figure()
-            fig_polar.add_trace(go.Scatterpolar(
-                r=[1] * len(theta_deg), # Punkty na obwodzie koła
-                theta=theta_deg,
-                mode='markers',
-                marker=dict(color=niebieski_jasny, size=10, opacity=0.6, line=dict(color='white', width=1)),
-            ))
-            fig_polar.update_layout(
-                height=450,
-                template="plotly_dark",
-                polar=dict(
-                    angularaxis=dict(
-                        direction="clockwise",
-                        period=360,
-                        ticks="outside",
-                        tickvals=[0, 90, 180, 270],
-                        ticktext=["0 (Max Wdechu)", "π/2", "π (Max Wydechu)", "3π/2"]
-                    ),
-                    radialaxis=dict(visible=False) # Ukrywamy promienie, bo r=1
-                ),
-                showlegend=False
-            )
-            st.plotly_chart(fig_polar, use_container_width=True)
-            
-        st.info("💡 **Interpretacja:** Jeśli kropki na wykresie kołowym grupują się w jednym miejscu, oznacza to silną synchronizację (serce bije zawsze w tej samej fazie oddechu). Rozproszenie oznacza brak stałej relacji fazowej.")
-    else:
-        st.warning("⚠️ Brak wykrytych załamków R. Ustaw parametry w Sekcji 3, aby zobaczyć synchrogram.")
+        # --- WYKRES 2: EKG + PIKI R ---
+        st.subheader("2. Sygnał EKG z zaznaczonymi załamkami R")
+        # Wykorzystujemy przefiltrowany sygnał EKG (jeśli masz zmienną clean_ecg)
+        fig2 = go.Figure()
+        fig2.add_trace(go.Scatter(x=df['czas'], y=df['ecg'], name="EKG", line=dict(color="white", width=1)))
+        fig2.add_trace(go.Scatter(x=df['czas'].iloc[peaks], y=df['ecg'].iloc[peaks], 
+                                 mode='markers', name="Pik R", marker=dict(color=zielony_neon, size=6)))
+        fig2.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Potencjał [mV]")
+        st.plotly_chart(fig2, use_container_width=True)
 
+        # --- WYKRES 3: ODDECH + PIKI R W CZASIE ---
+        st.subheader("3. Piki R nałożone na krzywą oddechową")
+        fig3 = go.Figure()
+        fig3.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Oddech (wygładzony)", line=dict(color=niebieski_jasny, opacity=0.6)))
+        fig3.add_trace(go.Scatter(x=df['czas'].iloc[peaks], y=resp_smooth[peaks], 
+                                 mode='markers', name="Moment uderzenia serca", marker=dict(color=zielony_neon, size=7, symbol="x")))
+        fig3.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Oddech [mV]")
+        st.plotly_chart(fig3, use_container_width=True)
+
+        # --- WYKRES 4: SYNCHROGRAM (0 do 2Pi) ---
+        st.subheader("4. Synchrogram (Faza oddechu 0 - 2π)")
+        
+        # Obliczanie fazy Hilberta
+        analytic_signal = signal.hilbert(
 
 
 

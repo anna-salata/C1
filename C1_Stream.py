@@ -1078,31 +1078,95 @@ with tab2:
         st.plotly_chart(fig_mix, use_container_width=True)
 
 
+        # --- PRZYGOTOWANIE DANYCH DO SYNCHROGRAMU KOŁOWEGO (ZĄBKOWANEGO) ---
+        if len(peaks_resp) > 1 and len(peaks_r) > 0:
+            # 1. Tworzymy pary cykli oddechowych (start -> stop)
+            breath_cycles = list(zip(peaks_resp[:-1], peaks_resp[1:]))
+            
+            # 2. Listy na wyniki
+            relative_times = []
+            wrapped_phases = []
+            cycle_start_times = []
+        
+            # 3. Dla każdego uderzenia serca (piku R)...
+            for r_peak in peaks_r:
+                # ...szukamy, w którym cyklu oddechowym się znajduje
+                for start_idx, end_idx in breath_cycles:
+                    if start_idx <= r_peak < end_idx:
+                        # Obliczamy czas trwania tego konkretnego cyklu [próbki]
+                        cycle_duration = end_idx - start_idx
+                        
+                        # Obliczamy czas względny R-piku wewnątrz cyklu (od 0 do 1)
+                        relative_pos = (r_peak - start_idx) / cycle_duration
+                        
+                        # Przeliczamy na fazę od 0 do 2PI
+                        phase_rad = relative_pos * 2 * np.pi
+                        
+                        # Czas rzeczywisty R-piku [s]
+                        real_time = df['czas'].iloc[r_peak]
+                        
+                        relative_times.append(real_time)
+                        wrapped_phases.append(phase_rad)
+                        
+                        # Zapisujemy czas startu cyklu [s], żeby narysować pionową linię
+                        if df['czas'].iloc[start_idx] not in cycle_start_times:
+                            cycle_start_times.append(df['czas'].iloc[start_idx])
+                        
+                        break # znaleźliśmy cykl, nie musimy szukać dalej
         # =========================
         # 4. SYNCHROGRAM
         # =========================
         st.markdown("### 📡 Synchrogram")
 
-        analytic_signal = hilbert(oddech)
-        phase = np.angle(analytic_signal)
-        phase = np.mod(phase, 2*np.pi)
-
-        phase_r = phase[peaks_ecg]
-        czas_r = czas[peaks_ecg]
-
-        fig_sync = go.Figure()
-
-        fig_sync.add_trace(go.Scatter(
-            x=czas_r,
-            y=phase_r,
-            mode='markers',
-            marker=dict(color='cyan', size=6)
-        ))
-
-        fig_sync.update_layout(
-            xaxis_title="Czas [s]",
-            yaxis_title="Faza oddechu [rad]",
-            yaxis=dict(range=[0, 2*np.pi])
-        )
-
-        st.plotly_chart(fig_sync, use_container_width=True)
+                # --- NOWY KOD SYNCHROGRAMU (ZĄBKOWANEGO) ---
+        if len(relative_times) > 0:
+            fig_synch_new = go.Figure()
+        
+            # 1. Dodajemy pionowe, niebieskie linie przerywane (poczatek cyklu)
+            # To jest ten kluczowy element wizualny ze wzoru
+            for start_t in cycle_start_times:
+                fig_synch_new.add_vline(x=start_t, line_width=1, line_dash="dash", line_color="#00CCFF", opacity=0.3)
+        
+            # 2. Dodajemy piki R (zielone kropki)
+            fig_synch_new.add_trace(go.Scatter(
+                x=relative_times, 
+                y=wrapped_phases, 
+                mode='markers', 
+                name="Zalamek R", 
+                marker=dict(
+                    color=zielony_neon, # neonowy zielony
+                    size=10, 
+                    opacity=0.9,
+                    line=dict(width=1, color='white') # obwódka dla lepszej widoczności
+                )
+            ))
+        
+            # 3. Stylizacja osi i layoutu (laboratoryjny styl)
+            fig_synch_new.update_layout(
+                title="Synchrogram - faza oddechu wewnątrz cykli (0 - 2π)",
+                height=450,
+                template="plotly_dark",
+                xaxis_title="Czas badania [s]",
+                yaxis_title="Faza [rad]",
+                hovermode="closest",
+                
+                # Ustawienia osi Y, żeby pokazywała Pi, tak jak na wzorze
+                yaxis=dict(
+                    tickvals=[0, np.pi, 2 * np.pi],
+                    ticktext=["0", "π", "2π"],
+                    range=[-0.2, 2 * np.pi + 0.2] # mały margines, żeby punkty na krawędziach nie były ucięte
+                ),
+                
+                # Legenda w poziomie, na dole (jak na wzorze)
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.3,
+                    xanchor="center",
+                    x=0.5
+                )
+            )
+            
+            st.plotly_chart(fig_synch_new, use_container_width=True)
+        else:
+            st.warning("Nie udało się wyliczyć fazy względnej. Upewnij się, że wykryto piki R i piki oddechu.")

@@ -195,9 +195,19 @@ with tab1:
     with col1:
         
     #---------------------------Kolumna 1 
+                    
+        if 'oddech' in df.columns:
+            # Jeśli wszystkie wartości w kolumnie oddech to zera lub NaN, usuwamy ją do wyświetlania
+            if df['oddech'].isnull().all() or (df['oddech'] == 0).all():
+                df_display = df.drop(columns=['oddech'])
+            else:
+                df_display = df
+        else:
+            df_display = df
+        
+        # Wyświetlamy tabelę bez zbędnej kolumny
+        st.dataframe(df_display, use_container_width=True
             
-        st.dataframe(df,height=265, use_container_width=True)
-    
     with col2:
     
         #-----------------------Kolumna 2

@@ -996,65 +996,85 @@ with tab1:
 
 #%%-------------------------SEKCJA 5 - SYNCHROGRAM ---------------------------
 with tab2:
-    # Zakładam, że zmienna 'wybor' pochodzi z Twojego selectboxa
+
     nowe_dane = wybor in ["Oddech standardowy", "Oddech co 10s"]
 
     if not nowe_dane:
         st.info("👉 Ta zakładka działa tylko dla danych z oddechem.")
+
     else:
         import numpy as np
         from scipy.signal import find_peaks, hilbert
         import plotly.graph_objects as go
 
-        # Pobranie sygnałów
         czas = df['czas'].values
         oddech = df['oddech'].values
         ecg = df['ecg'].values
 
-        # =====================================================================
-        # 1. DETEKCJA PIKÓW (Ważne: ujednolicone nazwy!)
-        # =====================================================================
-        
-        # Piki oddechowe
+        # =========================
+        # 1. ODDECH + PIKI
+        # =========================
+        st.markdown("### 🫁 Sygnał oddechowy")
+
         peaks_resp, _ = find_peaks(
             oddech,
             distance=200,
             height=np.mean(oddech)
         )
 
-        # Piki EKG (R-peaks) - nazwa zmiennej to peaks_ecg
+        fig_resp = go.Figure()
+        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
+        fig_resp.add_trace(go.Scatter(
+            x=czas[peaks_resp],
+            y=oddech[peaks_resp],
+            mode='markers',
+            name='Piki oddechu',
+            marker=dict(color='red', size=6)
+        ))
+
+        st.plotly_chart(fig_resp, use_container_width=True)
+
+
+        # =========================
+        # 2. EKG + R PEAKS
+        # =========================
+        st.markdown("### ❤️ EKG + R-peaki")
+
         peaks_ecg, _ = find_peaks(
             ecg,
             distance=400,
             height=np.mean(ecg)
         )
 
-        # =====================================================================
-        # 2. WYKRESY (Oddech, EKG, Mix)
-        # =====================================================================
-         # --- Wykres 1: Oddech ---
-        st.markdown("### 🫁 Sygnał oddechowy")
-
-        ig_resp = go.Figure()
-        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color=niebieski_jasny)))
-        fig_resp.add_trace(go.Scatter(x=czas[peaks_resp], y=oddech[peaks_resp], mode='markers', name='Piki oddechu', marker=dict(color='red', size=8)))
-        fig_resp.update_layout(template="plotly_dark", height=300)
-        st.plotly_chart(fig_resp, use_container_width=True)
-
-        # --- Wykres 2: EKG ---
-        st.markdown("### ❤️ EKG + R-peaki")
         fig_ecg = go.Figure()
-        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG', line=dict(color=zielony_neon)))
-        fig_ecg.add_trace(go.Scatter(x=czas[peaks_ecg], y=ecg[peaks_ecg], mode='markers', name='R-peaki', marker=dict(color='red', size=6)))
-        fig_ecg.update_layout(template="plotly_dark", height=300)
+        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG'))
+        fig_ecg.add_trace(go.Scatter(
+            x=czas[peaks_ecg],
+            y=ecg[peaks_ecg],
+            mode='markers',
+            name='R-peaki',
+            marker=dict(color='green', size=6)
+        ))
+
         st.plotly_chart(fig_ecg, use_container_width=True)
 
-        # --- Wykres 3: R na oddechu ---
+
+        # =========================
+        # 3. ODDECH + R PEAKS
+        # =========================
         st.markdown("### 🔄 Oddech + R-peaki")
+
         fig_mix = go.Figure()
-        fig_mix.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color=niebieski_jasny)))
-        fig_mix.add_trace(go.Scatter(x=czas[peaks_ecg], y=oddech[peaks_ecg], mode='markers', name='R na oddechu', marker=dict(color='yellow', size=6)))
-        fig_mix.update_layout(template="plotly_dark", height=300)
+        fig_mix.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
+
+        fig_mix.add_trace(go.Scatter(
+            x=czas[peaks_ecg],
+            y=oddech[peaks_ecg],
+            mode='markers',
+            name='R na oddechu',
+            marker=dict(color='yellow', size=6)
+        ))
+
         st.plotly_chart(fig_mix, use_container_width=True)
 
         # =====================================================================

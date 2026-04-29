@@ -1035,7 +1035,7 @@ with tab2:
          # --- Wykres 1: Oddech ---
         st.markdown("### 🫁 Sygnał oddechowy")
 
-       ig_resp = go.Figure()
+        ig_resp = go.Figure()
         fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color=niebieski_jasny)))
         fig_resp.add_trace(go.Scatter(x=czas[peaks_resp], y=oddech[peaks_resp], mode='markers', name='Piki oddechu', marker=dict(color='red', size=8)))
         fig_resp.update_layout(template="plotly_dark", height=300)
@@ -1043,7 +1043,7 @@ with tab2:
 
         # --- Wykres 2: EKG ---
         st.markdown("### ❤️ EKG + R-peaki")
-         fig_ecg = go.Figure()
+        fig_ecg = go.Figure()
         fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG', line=dict(color=zielony_neon)))
         fig_ecg.add_trace(go.Scatter(x=czas[peaks_ecg], y=ecg[peaks_ecg], mode='markers', name='R-peaki', marker=dict(color='red', size=6)))
         fig_ecg.update_layout(template="plotly_dark", height=300)

@@ -1,4 +1,3 @@
-@@ -1 +1,1105 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # 25.11.2025 edergergfer

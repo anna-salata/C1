@@ -993,111 +993,111 @@ with tab1:
 
 with tab2:
     nowe_dane = wybor in ["Oddech standardowy", "Oddech co 10s"]
-
-    if not nowe_dane:
-        st.info("👉 Ta zakładka działa tylko dla danych z oddechem.")
+    import numpy as np
+    from scipy.signal import find_peaks, hilbert
+    import plotly.graph_objects as go
     
-    else:
-        import numpy as np
-        from scipy.signal import find_peaks, hilbert
-        import plotly.graph_objects as go
-
-        czas = df['czas'].values
-        oddech = df['oddech'].values
-        ecg = df['ecg'].values
-
-        # =========================
-        # 1. ODDECH + PIKI
-        # =========================
-        st.markdown("### 🫁 Sygnał oddechowy")
-
-        peaks_resp, _ = find_peaks(
-            oddech,
-            distance=200,
-            height=np.mean(oddech)
+    st.markdown("## 🫁 Analiza synchronizacji oddech–serce")
+    
+    czas = df['czas'].values
+    oddech = df['oddech'].values
+    ecg = df['ecg'].values
+    
+    # =====================================
+    # 1. PIKI ODDECHOWE (cykle)
+    # =====================================
+    peaks_resp, _ = find_peaks(
+        oddech,
+        distance=200,
+        height=np.mean(oddech)
+    )
+    
+    # =====================================
+    # 2. R-PEAKI
+    # =====================================
+    peaks_ecg, _ = find_peaks(
+        ecg,
+        distance=400,
+        height=np.mean(ecg)
+    )
+    
+    # =====================================
+    # 3. FAZA ODDECHU (Hilbert)
+    # =====================================
+    analytic_signal = hilbert(oddech)
+    phase = np.angle(analytic_signal)
+    phase = np.mod(phase, 2*np.pi)
+    
+    # =====================================
+    # 4. SYNCHROGRAM DANYCH
+    # =====================================
+    phase_r = phase[peaks_ecg]
+    czas_r = czas[peaks_ecg]
+    
+    # =====================================
+    # 🔥 WYKRES SYNCHROGRAM (PRO)
+    # =====================================
+    fig_sync = go.Figure()
+    
+    # --- punkty (R-peaki jako faza)
+    fig_sync.add_trace(go.Scatter(
+        x=czas_r,
+        y=phase_r,
+        mode='markers',
+        name='Załamek R',
+        marker=dict(
+            color="#00ff88",
+            size=7,
+            line=dict(color="white", width=1)
         )
-
-        fig_resp = go.Figure()
-        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
-        fig_resp.add_trace(go.Scatter(
-            x=czas[peaks_resp],
-            y=oddech[peaks_resp],
-            mode='markers',
-            name='Piki oddechu',
-            marker=dict(color='red', size=6)
-        ))
-
-        st.plotly_chart(fig_resp, use_container_width=True)
-
-
-        # =========================
-        # 2. EKG + R PEAKS
-        # =========================
-        st.markdown("### ❤️ EKG + R-peaki")
-
-        peaks_ecg, _ = find_peaks(
-            ecg,
-            distance=400,
-            height=np.mean(ecg)
+    ))
+    
+    # =====================================
+    # 🔥 LINIE CYKLI ODDECHOWYCH (to robi efekt jak u Ciebie)
+    # =====================================
+    for p in peaks_resp:
+        fig_sync.add_vline(
+            x=czas[p],
+            line=dict(color="#3a7cff", width=1)
         )
-
-        fig_ecg = go.Figure()
-        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG'))
-        fig_ecg.add_trace(go.Scatter(
-            x=czas[peaks_ecg],
-            y=ecg[peaks_ecg],
-            mode='markers',
-            name='R-peaki',
-            marker=dict(color='green', size=6)
-        ))
-
-        st.plotly_chart(fig_ecg, use_container_width=True)
-
-
-        # =========================
-        # 3. ODDECH + R PEAKS
-        # =========================
-        st.markdown("### 🔄 Oddech + R-peaki")
-
-        fig_mix = go.Figure()
-        fig_mix.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
-
-        fig_mix.add_trace(go.Scatter(
-            x=czas[peaks_ecg],
-            y=oddech[peaks_ecg],
-            mode='markers',
-            name='R na oddechu',
-            marker=dict(color='yellow', size=6)
-        ))
-
-        st.plotly_chart(fig_mix, use_container_width=True)
-
-
-        # =========================
-        # 4. SYNCHROGRAM
-        # =========================
-        st.markdown("### 📡 Synchrogram")
-
-        analytic_signal = hilbert(oddech)
-        phase = np.angle(analytic_signal)
-        phase = np.mod(phase, 2*np.pi)
-
-        phase_r = phase[peaks_ecg]
-        czas_r = czas[peaks_ecg]
-
-        fig_sync = go.Figure()
-
-        fig_sync.add_trace(go.Scatter(
-            x=czas_r,
-            y=phase_r,
-            mode='markers',
-            marker=dict(color='cyan', size=6)
-        ))
-
-        fig_sync.update_layout(
-            xaxis_title="Czas [s]",
-            yaxis_title="Faza oddechu [rad]",
-            yaxis=dict(range=[0, 2*np.pi])
+    
+    # =====================================
+    # 🔥 OPCJONALNIE – „ząbki” (reset fazy)
+    # =====================================
+    # tworzymy ciągłą fazę dla wizualizacji
+    phase_cont = phase.copy()
+    
+    fig_sync.add_trace(go.Scatter(
+        x=czas,
+        y=phase_cont,
+        mode='lines',
+        line=dict(color="rgba(0,255,136,0.2)", width=2),
+        name='Faza oddechu'
+    ))
+    
+    # =====================================
+    # STYLIZACJA 🔥
+    # =====================================
+    fig_sync.update_layout(
+        title="Synchrogram – faza oddechu w momentach R-peaków",
+        height=400,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+    
+        xaxis_title="Czas trwania [s]",
+        yaxis_title="Faza [rad]",
+    
+        yaxis=dict(
+            range=[0, 2*np.pi],
+            tickvals=[0, np.pi, 2*np.pi],
+            ticktext=["0", "π", "2π"]
+        ),
+    
+        legend=dict(
+            orientation="h",
+            y=1.05,
+            x=0
         )
-
-        st.plotly_chart(fig_sync, use_container_width=True)
+    )
+    
+    st.plotly_chart(fig_sync, use_container_width=True)

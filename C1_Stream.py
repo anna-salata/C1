@@ -119,36 +119,26 @@ st.markdown(f"""
 
 @st.cache_data
 def load_my_data(file_choice):
-    # SŁOWNIK ŚCIEŻEK - Upewnij się, że nazwy plików na GitHub są IDENTYCZNE (wielkość liter!)
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
         "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt",
-        "Oddech standardowy": "ekg+oddech_stand.txt",
-        "Oddech kontrolowany (co 10 sekund)": "EKG+oddech_co_10_sek.txt"
+        "Oddech standardowy": "ekg+oddech stand.txt",
+        "Oddech co 10 sek": "EKG+oddech co 10 sek.txt"
     }
     
     selected_path = paths[file_choice]
-    
-    # Zabezpieczenie przed brakiem pliku na serwerze
-    if not os.path.exists(selected_path):
-        st.error(f"Nie znaleziono pliku: {selected_path}. Sprawdź wielkość liter w nazwie pliku na GitHubie!")
-        return None
-
-    # Wczytanie danych
     data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
     
-   # Dynamiczne dopasowanie kolumn
     if data.shape[1] == 3:
-        # Kolejność w Twoich plikach TXT: 0:czas, 1:ecg, 2:oddech
-        data.columns = ['czas', 'ecg', 'oddech']
+        # NOWE PLIKI: 0-Czas, 1-Oddech, 2-EKG
+        data.columns = ['czas', 'oddech', 'ecg']
     else:
-        # Pliki stare (tylko 2 kolumny)
+        # STARE PLIKI: 0-Czas, 1-EKG
         data.columns = ['czas', 'ecg']
-        data['oddech'] = 0
-    
+        data['oddech'] = 0 # Brak danych o oddechu w starych plikach
+        
     for col in data.columns:
         data[col] = pd.to_numeric(data[col], errors='coerce')
-        
     return data.dropna()
 
 # Wybór w sidebarze
@@ -999,42 +989,50 @@ import scipy.signal as signal
 
 st.markdown(f'<p style="font-size: 26px; font-weight: bold; color:{niebieski_jasny};">Synchronizacja Sercowo-Oddechowa</p>', unsafe_allow_html=True)
 
-if 'df' in locals() and df['oddech'].any():
-    # 1. Pobieramy właściwe sygnały
+# Sprawdzamy czy plik ma dane oddechowe (nowe pliki)
+if 'df' in locals() and not (df['oddech'] == 0).all():
     ecg_signal = df['ecg'].values
     resp_raw = df['oddech'].values
     
-    # 2. Wygładzamy oddech, żeby pozbyć się szumu i wydobyć "falę"
-    # Savgol_filter z dużym oknem (np. 501) idealnie wyciąga wolną falę oddechu
+    # 1. Filtrowanie oddechu - okno 501, aby uzyskać gładką "falę"
     resp_smooth = savgol_filter(resp_raw, 501, 3) 
     
-    # 3. Detekcja pików R (Tylko te powyżej 1.5mV)
+    # 2. Detekcja pików R - rygorystycznie: tylko > 1.5mV, min. 0.5s odstępu
     clean_peaks_r, _ = signal.find_peaks(ecg_signal, height=1.5, distance=500)
     
-    # 4. Detekcja szczytów oddechu (wdechów)
-    # Przy oddechu co 10s szczyty są rzadko, więc distance musi być duży (np. 5000 próbek)
+    # 3. Detekcja szczytów oddechu
     peaks_resp, _ = signal.find_peaks(resp_smooth, distance=3000, prominence=0.01)
 
-    # --- WYKRES 1: PRAWDZIWY ODDECH ---
-    st.subheader("1. Krzywa oddechowa (Fala)")
+    # --- WYKRES 1: KRZYWA ODDECHOWA (FALA) ---
+    st.subheader("1. Krzywa oddechowa (FALA)")
     fig1 = go.Figure()
     fig1.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Fala oddechu", line=dict(color=niebieski_jasny, width=3)))
     fig1.add_trace(go.Scatter(x=df['czas'].iloc[peaks_resp], y=resp_smooth[peaks_resp], 
                              mode='markers', name="Szczyt wdechu", marker=dict(color="red", size=10)))
-    fig1.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="mV")
+    fig1.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="mV (Oddech)")
     st.plotly_chart(fig1, use_container_width=True)
 
+    # --- WYKRES 2: EKG (TYLKO PIKI R) ---
+    st.subheader("2. Sygnał EKG (Tylko piki R > 1.5mV)")
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=df['czas'], y=ecg_signal, name="EKG", line=dict(color="white", width=0.8)))
+    fig2.add_trace(go.Scatter(x=df['czas'].iloc[clean_peaks_r], y=ecg_signal[clean_peaks_r], 
+                             mode='markers', name="Pik R", marker=dict(color=zielony_neon, size=8)))
+    fig2.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="mV (EKG)")
+    st.plotly_chart(fig2, use_container_width=True)
+
     # --- WYKRES 3: PIKI R NA FALI ODDECHU ---
-    st.subheader("2. Pozycje uderzeń serca na fali oddechu")
+    st.subheader("3. Piki R nałożone na krzywą oddechową")
     fig3 = go.Figure()
-    fig3.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Oddech", line=dict(color=niebieski_jasny), opacity=0.4))
+    fig3.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Fala oddechu", line=dict(color=niebieski_jasny), opacity=0.4))
     fig3.add_trace(go.Scatter(x=df['czas'].iloc[clean_peaks_r], y=resp_smooth[clean_peaks_r], 
-                             mode='markers', name="Pik R", marker=dict(color=zielony_neon, size=8, symbol="x")))
-    fig3.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Faza oddechu")
+                             mode='markers', name="Moment uderzenia serca (R)", 
+                             marker=dict(color=zielony_neon, size=9, symbol="x")))
+    fig3.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Amplituda oddechu")
     st.plotly_chart(fig3, use_container_width=True)
 
-    # --- WYKRES 4: SYNCHROGRAM ---
-    st.subheader("3. Synchrogram (Faza 0 - 2π)")
+    # --- WYKRES 4: SYNCHROGRAM (0 - 2PI) ---
+    st.subheader("4. Synchrogram (Faza oddechu 0 - 2π)")
     analytic_signal = signal.hilbert(resp_smooth)
     phase_2pi = np.mod(np.angle(analytic_signal), 2 * np.pi)
     
@@ -1044,10 +1042,12 @@ if 'df' in locals() and df['oddech'].any():
     fig4.update_layout(
         height=450, template="plotly_dark",
         xaxis_title="Czas [s]", yaxis_title="Faza [rad]",
-        yaxis=dict(tickvals=[0, np.pi, 2*np.pi], ticktext=["0", "π", "2π"])
+        yaxis=dict(tickvals=[0, np.pi, 2*np.pi], ticktext=["0", "π", "2π"], range=[-0.2, 6.5])
     )
     st.plotly_chart(fig4, use_container_width=True)
 
+else:
+    st.info("💡 Wybierz plik z oddechem w panelu bocznym, aby zobaczyć tę analizę.")
 
 
 

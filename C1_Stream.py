@@ -199,7 +199,7 @@ with tab1:
         
         df_display = df.copy() # robimy kopię, żeby nie psuć oryginalnych danych
         
-        if 'Spoczynkowe' in rodzaj_badania: # jeśli wybrana opcja zawiera słowo Spoczynkowe
+        if 'Spoczynkowe' in wybor: # jeśli wybrana opcja zawiera słowo Spoczynkowe
             if 'oddech' in df_display.columns:
                 df_display = df_display.drop(columns=['oddech'])
         

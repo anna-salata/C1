@@ -1035,17 +1035,24 @@ with tab2:
         st.plotly_chart(fig_resp, use_container_width=True)
 
         # =====================================================================
-        # 2. EKG + R PEAKS (Zoptymalizowana detekcja)
+        # 2. EKG + R PEAKS (Wersja z poprawioną czułością)
         # =====================================================================
         st.markdown("### ❤️ EKG + R-peaki")
 
-        # Dla EKG kluczowy jest wysoki prominence, by ignorować załamki T i P
+        # 1. Obliczamy próg dynamicznie (80% z 95. percentyla sygnału)
+        # To zadziała znacznie lepiej niż zwykła średnia dla niskich sygnałów
+        prog_czulosci = np.percentile(ecg, 95) * 0.8
+
         peaks_ecg, _ = find_peaks(
             ecg,
-            distance=40,              # minimalny odstęp (ok. 0.4s przy fs=100)
-            prominence=0.6,           # musi być wyraźnym "szpikulcem"
-            height=np.mean(ecg) * 1.2 # lekko powyżej średniej, by uciąć szum
+            distance=40,              # dystans zostawiamy (ok. 0.4s przy fs=100)
+            prominence=0.05,          # ZMNIEJSZONY prominence dla niskich sygnałów
+            height=prog_czulosci      # dynamiczny próg
         )
+
+        # Sprawdzenie w konsoli/Streamlit czy cokolwiek znalazło
+        if len(peaks_ecg) == 0:
+            st.warning("⚠️ Nie wykryto pików R. Spróbuj obniżyć 'Próg R-peaks' w panelu bocznym.")
 
         fig_ecg = go.Figure()
         fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG', line=dict(color='#39FF14')))

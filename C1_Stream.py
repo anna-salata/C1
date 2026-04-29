@@ -195,7 +195,7 @@ with tab1:
         
     #---------------------------Kolumna 1 
             
-        st.dataframe(df,height=265, use_container_width=True)
+        st.dataframe(df,height=265, width="stretch")
     
     with col2:
     
@@ -239,7 +239,7 @@ with tab1:
         font=dict(color="white") # Białe napisy w legendzie
     )
     
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width="stretch")
         
     with col3:
             
@@ -281,7 +281,7 @@ with tab1:
             )
     
         with st.container(border=True):
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         # Dodajemy grubszą linię dla oddzielenia (tę, którą robiliśmy wcześniej)
     
     
@@ -362,7 +362,7 @@ with tab1:
     
         st.markdown("###### Filtracja sygnału")
         with st.container(border=True):
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         
     #%%-----------------------------SEKCJA 3 - Załamki R---------------------------
     st.markdown("""
@@ -438,7 +438,7 @@ with tab1:
             yaxis_title="Amplituda [mV]")
     
             with st.container(border=True):
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
     
     
     
@@ -495,7 +495,7 @@ with tab1:
     )
     
     # 4. Wyświetlenie w Streamlit
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         
     
     with col2:
@@ -519,7 +519,7 @@ with tab1:
             col_rr1, col_rr2 = st.columns([1., 1.8])
     
             with col_rr1:
-                st.dataframe(df_rr, height=310, use_container_width=True)
+                st.dataframe(df_rr, height=310, width="stretch")
     
             
             
@@ -550,7 +550,7 @@ with tab1:
     
     # 3. Wyświetlenie
                 with st.container(border=True):
-                    st.plotly_chart(fig_hist, use_container_width=True)
+                    st.plotly_chart(fig_hist, width="stretch")
         
             srednie_rr = df_rr['rr_ms'].mean()
             sdnn = df_rr['rr_ms'].std()
@@ -673,7 +673,7 @@ with tab1:
     
         )
     
-        st.plotly_chart(fig_seg, use_container_width=True)    
+        st.plotly_chart(fig_seg, width="stretch")    
     
         
     with col2:
@@ -715,7 +715,7 @@ with tab1:
                    [t for t in fig_qrs.data if t.name == 'SREDNI_QRS']
     
     # Wyświetlenie w Streamlit
-            st.plotly_chart(fig_qrs, use_container_width=True)
+            st.plotly_chart(fig_qrs, width="stretch")
             
             
             
@@ -754,7 +754,7 @@ with tab1:
     )
     
     # 5. Wyświetlenie w Streamlit
-            st.plotly_chart(fig_single, use_container_width=True)
+            st.plotly_chart(fig_single, width="stretch")
             
             
             
@@ -795,7 +795,7 @@ with tab1:
     )
     
     # 5. Wyświetlenie w Streamlit
-    st.plotly_chart(fig_3d, use_container_width=True)
+    st.plotly_chart(fig_3d, width="stretch")
             
             
     styled_df = df_qrs.style.map(lambda x: f"color: {zielony}; font-weight: bold;")
@@ -829,11 +829,11 @@ with tab1:
             styled_df = tab_view.style.applymap(highlight_selected, subset=[col_to_highlight] if col_to_highlight in tab_view.columns else [])
         
         # Wyświetlenie tabeli z formatowaniem liczb
-        st.dataframe(styled_df.format(precision=3), use_container_width=True)
+        st.dataframe(styled_df.format(precision=3), width="stretch")
     
     except Exception as e:
         # Plan awaryjny: jeśli stylizacja zawiedzie, wyświetl czyste dane (brak błędu!)
-        st.dataframe(tab_view, use_container_width=True)
+        st.dataframe(tab_view, width="stretch")
     
     # --- Sekcja wyświetlania tabeli (Bezpieczna dla wysiłkowego) ---
     
@@ -871,7 +871,7 @@ with tab1:
         
         # Sprawdzamy, czy dane istnieją
         if 'df' in locals() or 'df' in globals():
-            if st.button("🚀 Wykonaj dekompozycję EMD", type="primary", use_container_width=True):
+            if st.button("🚀 Wykonaj dekompozycję EMD", type="primary", width="stretch"):
                 with st.spinner("Trwa dekompozycja EMD..."):
                     ecg_signal = df['ecg_filtrowany'].values.astype(float)
                     czas_signal = df['czas'].values
@@ -926,7 +926,7 @@ with tab1:
                 )
             
             fig_imfs.update_layout(height=200 + n_imf * 130, template="plotly_dark", showlegend=False)
-            st.plotly_chart(fig_imfs, use_container_width=True)
+            st.plotly_chart(fig_imfs, width="stretch")
             
             # ==================== 2. Sygnał oczyszczony ====================
             st.markdown("###### Sygnał EKG po usunięciu modulacji oddechowej")
@@ -942,7 +942,7 @@ with tab1:
                                            name='Po (bez modulacji)', line=dict(color=zielony_neon, width=2)))
             
             fig_clean.update_layout(height=380, template="plotly_dark", xaxis_title="Czas [s]")
-            st.plotly_chart(fig_clean, use_container_width=True)
+            st.plotly_chart(fig_clean, width="stretch")
             
             # Metryki
             col_m1, col_m2, col_m3, col_m4 = st.columns(4)
@@ -970,7 +970,7 @@ with tab1:
                     colorscale='Hot_r', zsmooth='best'
                 ))
                 fig_hht.update_layout(height=460, template="plotly_dark", yaxis=dict(range=[0, 3.0]))
-                st.plotly_chart(fig_hht, use_container_width=True)
+                st.plotly_chart(fig_hht, width="stretch")
             
             # ==================== 4. Eksport ====================
             st.markdown("---")
@@ -982,7 +982,7 @@ with tab1:
                 data=csv_data,
                 file_name="clean_ecg_output.csv",
                 mime="text/csv",
-                use_container_width=True
+                width="stretch"
             )
             
         else:
@@ -1099,6 +1099,6 @@ with tab2:
         )
     )
     
-    st.plotly_chart(fig_sync, use_container_width=True)
+    st.plotly_chart(fig_sync, width="stretch")
     
     

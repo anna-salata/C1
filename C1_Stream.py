@@ -206,7 +206,7 @@ with tab1:
             df_display = df
         
         # Wyświetlamy tabelę bez zbędnej kolumny
-        st.dataframe(df_display, use_container_width=True
+        st.dataframe(df_display, use_container_width=True)
             
     with col2:
     

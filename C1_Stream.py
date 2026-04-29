@@ -120,45 +120,48 @@ import os
 
 @st.cache_data
 def load_my_data(file_choice):
-    # SPRAWDŹ DOKŁADNIE NAZWY PLIKÓW NA GITHUBIE (wielkość liter!)
+    # KLUCZE (po lewej) muszą być identyczne jak napisy w selectbox!
+    # WARTOŚCI (po prawej) to Twoje nowe nazwy plików z podkreślnikami
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
         "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt",
-        "Oddech standardowy": "ekg+oddech_stand.txt",
-        "Oddech co 10 sek": "EKG+oddech_co_10_sek.txt" # Tutaj często jest błąd (EKG vs ekg)
+        "Oddech Standardowy": "ekg+oddech_stand.txt",
+        "Oddech Kontrolowany (co 10 sekund)": "EKG+oddech_co_10_sek.txt"
     }
     
     selected_path = paths[file_choice]
     
-    # Sprawdzenie czy plik istnieje w folderze aplikacji
     if not os.path.exists(selected_path):
-        st.error(f"❌ Nie znaleziono pliku: **{selected_path}**. Sprawdź, czy nazwa na GitHubie jest identyczna (wielkość liter ma znaczenie!)")
+        st.error(f"❌ Nie znaleziono pliku: **{selected_path}**")
         return None
 
     try:
         data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
         
         if data.shape[1] == 3:
-            # TWOJA NOWA KOLEJNOŚĆ: 0-Czas, 1-Oddech, 2-EKG
+            # NOWE PLIKI: 0-Czas, 1-Oddech, 2-EKG
             data.columns = ['czas', 'oddech', 'ecg']
+            data['typ'] = 'nowy' # Oznaczamy typ pliku
         else:
             # STARE PLIKI: 0-Czas, 1-EKG
             data.columns = ['czas', 'ecg']
-            data['oddech'] = 0 
+            data['oddech'] = 0
+            data['typ'] = 'stary'
             
-        for col in data.columns:
+        for col in ['czas', 'oddech', 'ecg']:
             data[col] = pd.to_numeric(data[col], errors='coerce')
         return data.dropna()
     except Exception as e:
-        st.error(f"Błąd podczas czytania pliku: {e}")
+        st.error(f"Błąd: {e}")
         return None
 
-# Wybór w sidebarze
+# Sidebar - napisy muszą być DOKŁADNIE takie jak klucze w paths
 wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", 
                              ["Spoczynkowe", "Wysiłkowe", "Oddech Standardowy", "Oddech Kontrolowany (co 10 sekund)"])
 df = load_my_data(wybor)
 
 # --- Koniec sekcji wczytywania ---
+
 
 #%%---------------------------------Tytuł i ramka------------------------------
 st.markdown(f"""

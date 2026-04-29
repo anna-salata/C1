@@ -996,12 +996,10 @@ with tab1:
 
 #%%-------------------------SEKCJA 5 - SYNCHROGRAM ---------------------------
 with tab2:
-
     nowe_dane = wybor in ["Oddech standardowy", "Oddech co 10s"]
 
     if not nowe_dane:
         st.info("👉 Ta zakładka działa tylko dla danych z oddechem.")
-
     else:
         import numpy as np
         from scipy.signal import find_peaks, hilbert
@@ -1011,62 +1009,63 @@ with tab2:
         oddech = df['oddech'].values
         ecg = df['ecg'].values
 
-        # =========================
-        # 1. ODDECH + PIKI
-        # =========================
+        # =====================================================================
+        # 1. ODDECH + PIKI (Zoptymalizowana detekcja)
+        # =====================================================================
         st.markdown("### 🫁 Sygnał oddechowy")
 
+        # Zwiększamy dystans (np. min. 1.5s przy fs=100) i dodajemy prominence
         peaks_resp, _ = find_peaks(
             oddech,
-            distance=200,
-            height=np.mean(oddech)
+            distance=150,             # minimalny odstęp między oddechami
+            prominence=0.3,           # pik musi znacząco wystawać ponad doliny
+            height=np.mean(oddech)    # musi być powyżej średniej
         )
 
         fig_resp = go.Figure()
-        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
+        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color='#00d4ff')))
         fig_resp.add_trace(go.Scatter(
             x=czas[peaks_resp],
             y=oddech[peaks_resp],
             mode='markers',
             name='Piki oddechu',
-            marker=dict(color='red', size=6)
+            marker=dict(color='red', size=8, symbol='diamond')
         ))
-
+        fig_resp.update_layout(template="plotly_dark", height=350)
         st.plotly_chart(fig_resp, use_container_width=True)
 
-
-        # =========================
-        # 2. EKG + R PEAKS
-        # =========================
+        # =====================================================================
+        # 2. EKG + R PEAKS (Zoptymalizowana detekcja)
+        # =====================================================================
         st.markdown("### ❤️ EKG + R-peaki")
 
+        # Dla EKG kluczowy jest wysoki prominence, by ignorować załamki T i P
         peaks_ecg, _ = find_peaks(
             ecg,
-            distance=400,
-            height=np.mean(ecg)
+            distance=40,              # minimalny odstęp (ok. 0.4s przy fs=100)
+            prominence=0.6,           # musi być wyraźnym "szpikulcem"
+            height=np.mean(ecg) * 1.2 # lekko powyżej średniej, by uciąć szum
         )
 
         fig_ecg = go.Figure()
-        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG'))
+        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG', line=dict(color='#39FF14')))
         fig_ecg.add_trace(go.Scatter(
             x=czas[peaks_ecg],
             y=ecg[peaks_ecg],
             mode='markers',
             name='R-peaki',
-            marker=dict(color='green', size=6)
+            marker=dict(color='red', size=6)
         ))
-
+        fig_ecg.update_layout(template="plotly_dark", height=350)
         st.plotly_chart(fig_ecg, use_container_width=True)
 
-
-        # =========================
+        # =====================================================================
         # 3. ODDECH + R PEAKS
-        # =========================
+        # =====================================================================
         st.markdown("### 🔄 Oddech + R-peaki")
 
         fig_mix = go.Figure()
-        fig_mix.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
-
+        fig_mix.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color='#00d4ff')))
         fig_mix.add_trace(go.Scatter(
             x=czas[peaks_ecg],
             y=oddech[peaks_ecg],
@@ -1074,18 +1073,16 @@ with tab2:
             name='R na oddechu',
             marker=dict(color='yellow', size=6)
         ))
-
+        fig_mix.update_layout(template="plotly_dark", height=350)
         st.plotly_chart(fig_mix, use_container_width=True)
 
         # =====================================================================
-        # 3. OBLICZENIA DO SYNCHROGRAMU (ZĄBKOWANEGO)
+        # 3. OBLICZENIA DO SYNCHROGRAMU
         # =====================================================================
-        
         relative_times = []
         wrapped_phases = []
         cycle_start_times = []
 
-        # UŻYWAMY POPRAWNEJ NAZWY: peaks_ecg zamiast peaks_r
         if len(peaks_resp) > 1 and len(peaks_ecg) > 0:
             breath_cycles = list(zip(peaks_resp[:-1], peaks_resp[1:]))
             
@@ -1112,17 +1109,15 @@ with tab2:
         if len(relative_times) > 0:
             fig_synch_new = go.Figure()
         
-            # Pionowe linie (początek cyklu)
             for start_t in cycle_start_times:
                 fig_synch_new.add_vline(x=start_t, line_width=1, line_dash="dash", line_color="#00CCFF", opacity=0.3)
         
-            # Kropki z R-peaks
             fig_synch_new.add_trace(go.Scatter(
                 x=relative_times, 
                 y=wrapped_phases, 
                 mode='markers', 
                 name="Zalamek R", 
-                marker=dict(color=zielony_neon, size=10, opacity=0.9, line=dict(width=1, color='white'))
+                marker=dict(color='#39FF14', size=10, opacity=0.9, line=dict(width=1, color='white'))
             ))
         
             fig_synch_new.update_layout(
@@ -1131,9 +1126,13 @@ with tab2:
                 template="plotly_dark",
                 xaxis_title="Czas badania [s]",
                 yaxis_title="Faza [rad]",
-                yaxis=dict(tickvals=[0, np.pi, 2 * np.pi], ticktext=["0", "π", "2π"], range=[-0.2, 2 * np.pi + 0.2]),
+                yaxis=dict(
+                    tickvals=[0, np.pi, 2 * np.pi], 
+                    ticktext=["0", "π", "2π"], 
+                    range=[-0.2, 2 * np.pi + 0.2]
+                ),
                 legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
             )
             st.plotly_chart(fig_synch_new, use_container_width=True)
         else:
-            st.warning("Nie udało się wyliczyć fazy. Sprawdź parametry detekcji pików.")
+            st.warning("Brak danych do wyświetlenia synchrogramu. Dostosuj parametry detekcji.")

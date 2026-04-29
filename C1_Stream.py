@@ -119,33 +119,25 @@ st.markdown(f"""
 
 @st.cache_data
 def load_my_data(file_choice):
-    # GitHub nie widzi Twojego dysku C:, widzi tylko pliki w repozytorium.
-    # Wpisujemy same nazwy plików, które tam wrzuciłaś:
     paths = {
         "Spoczynkowe": "ekg_spoczynkowe_Alisa.txt",
         "Wysiłkowe": "ekg_wysilkowe_AlisaSel.txt",
-        "Oddech standardowy": "ekg+oddech_stand.txt",
-        "Oddech kontrolowany (co 10 sekund)": "EKG+oddech_co_10_sek.txt"
+        "Oddech standardowy": "ekg+oddech stand.txt",
+        "Oddech co 10 sek": "EKG+oddech co 10 sek.txt"
     }
     
     selected_path = paths[file_choice]
     
-    # Dla nowych plików z oddechem (standardowy i co 10s)
-    if "oddech" in file_choice.lower():
-        # Te pliki mają zazwyczaj 3 kolumny: czas, oddech, ekg
-        data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
-        data.columns = ['czas', 'oddech', 'ecg']
-    else:
-        # Oryginalne wczytywanie dla poprzednich plików
-        data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
-        data.columns = ['czas', 'oddech', 'ecg']
+    # Wczytujemy dane (zakładamy 3 kolumny: czas, oddech, ecg)
+    data = pd.read_csv(selected_path, sep='\t', decimal=',', header=None, skiprows=6)
+    data.columns = ['czas', 'oddech', 'ecg']
     
     for col in data.columns:
         data[col] = pd.to_numeric(data[col], errors='coerce')
         
     return data.dropna()
 
-# Aktualizacja paska bocznego
+# Nowa lista wyboru w sidebarze
 wybor = st.sidebar.selectbox("Wybierz rodzaj badania:", 
                              ["Spoczynkowe", "Wysiłkowe", "Oddech standardowy", "Oddech co 10 sek"])
 df = load_my_data(wybor)

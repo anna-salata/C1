@@ -993,15 +993,23 @@ with tab1:
 
 #%%-------------------------SEKCJA 5 - ---------------------------
 with tab2:
-        if df['typ_analizy'].iloc[0] == 'nowy':
+       # --- BEZPIECZNE SPRAWDZENIE TYPU ANALIZY ---
+        # Sprawdzamy obie możliwe nazwy kolumn, aby uniknąć błędu KeyError
+        is_nowy = False
+        if 'typ' in df.columns:
+            is_nowy = df['typ'].iloc[0] == 'nowy'
+        elif 'typ_analizy' in df.columns:
+            is_nowy = df['typ_analizy'].iloc[0] == 'nowy'
+
+        if is_nowy:
             # --- BOCZNY PANEL DLA ZAKŁADKI ODDECHOWEJ ---
-            # Używamy sidebar do ustawienia parametrów, tak jak na Twoim wzorze
+            # Te elementy pojawią się w sidebarze po lewej (jak na wzorze)
             st.sidebar.markdown("### 🛠️ Parametry detekcji")
             
             prog_oddech = st.sidebar.slider("Próg pików oddechu", 0.0, 2.0, 0.1, 0.01)
             dist_oddech = st.sidebar.slider("Minimalny dystans oddechu [próbki]", 100, 5000, 800, 100)
             
-            prog_ekg = st.sidebar.slider("Próg R-peaks (EKG)", 0.0, 2.0, 1.5, 0.1) # Na wzorze było 0.1, ale Ty chciałaś 1.5
+            prog_ekg = st.sidebar.slider("Próg R-peaks (EKG)", 0.0, 2.0, 1.5, 0.1)
             dist_ekg = st.sidebar.slider("Minimalny dystans R-peaks [próbki]", 100, 2000, 400, 50)
             
             st.sidebar.markdown("### 📈 Synchrogram")
@@ -1009,14 +1017,15 @@ with tab2:
 
             # --- PRZYGOTOWANIE DANYCH ---
             fs = 1000
+            # Wygładzanie sygnału oddechowego
             resp_smooth = savgol_filter(df['oddech'].values, 501, 3)
             ecg_signal = df['ecg'].values
             
-            # Detekcja zgodna z suwakami
+            # Detekcja pików na podstawie wartości z suwaków
             peaks_resp, _ = find_peaks(resp_smooth, height=prog_oddech, distance=dist_oddech)
             peaks_r, _ = find_peaks(ecg_signal, height=prog_ekg, distance=dist_ekg)
             
-            # Obliczanie fazy do synchrogramu
+            # Obliczanie fazy sygnału (używamy transformaty Hilberta)
             analytic_signal = hilbert(resp_smooth)
             phase_2pi = np.mod(np.angle(analytic_signal), 2 * np.pi)
 
@@ -1049,7 +1058,7 @@ with tab2:
             # 4. Synchrogram
             fig4 = go.Figure()
             # Dodajemy pionowe linie cyklu (od wdechu do wdechu)
-            for p in peaks_resp:
+        for p in peaks_resp:
                 fig4.add_vline(x=df['czas'].iloc[p], line_width=1, line_dash="dash", line_color="blue", opacity=0.3)
             
             fig4.add_trace(go.Scatter(x=df['czas'].iloc[peaks_r], y=phase_2pi[peaks_r], 

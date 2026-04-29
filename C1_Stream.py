@@ -1001,15 +1001,27 @@ with tab2:
     czas = df['czas'].values
     oddech = df['oddech'].values
     ecg = df['ecg'].values
-    
+    if len(czas) < 10:
+        st.error("Za mało danych do analizy!")
+        st.stop()
+
+    if np.std(oddech) < 1e-3:
+        st.warning("Sygnał oddechowy jest prawie stały – analiza może być błędna")
+
+    if np.std(ecg) < 1e-3:
+        st.error("Sygnał EKG wygląda na uszkodzony")
+        st.stop()
     # =====================================
     # 1. PIKI ODDECHOWE (cykle)
     # =====================================
     peaks_resp, _ = find_peaks(
         oddech,
         distance=200,
-        height=np.mean(oddech)
+        prominence=np.std(oddech) * 0.3
     )
+
+    if len(peaks_resp) < 3:
+        st.warning("Za mało cykli oddechowych wykryto")
     
     # =====================================
     # 2. R-PEAKI
@@ -1017,12 +1029,19 @@ with tab2:
     peaks_ecg, _ = find_peaks(
         ecg,
         distance=400,
-        height=np.mean(ecg)
+        prominence=np.std(ecg) * 0.5
     )
-    
+
+    if len(peaks_ecg) < 5:
+        st.error("Nie wykryto poprawnie załamków R")
+        st.stop()
+    oddech = savgol_filter(oddech, 101, 3)
     # =====================================
     # 3. FAZA ODDECHU (Hilbert)
     # =====================================
+    if np.any(np.isnan(oddech)):
+        st.error("Sygnał oddechowy zawiera NaN")
+        st.stop()
     analytic_signal = hilbert(oddech)
     phase = np.angle(analytic_signal)
     phase = np.mod(phase, 2*np.pi)
@@ -1030,6 +1049,7 @@ with tab2:
     # =====================================
     # 4. SYNCHROGRAM DANYCH
     # =====================================
+    peaks_ecg = peaks_ecg[peaks_ecg < len(phase)]
     phase_r = phase[peaks_ecg]
     czas_r = czas[peaks_ecg]
     

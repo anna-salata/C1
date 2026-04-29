@@ -1003,15 +1003,20 @@ st.markdown(f"""<hr style="margin-top: 30px; height:6px; border:none; background
 st.markdown(f'<p style="font-size: 26px; font-weight: bold; color:{niebieski_jasny};">Synchronizacja Sercowo-Oddechowa (Synchrogram)</p>', unsafe_allow_html=True)
 
 if 'df' in locals():
-    # --- PRZYGOTOWANIE DANYCH ---
+    # --- PRZYGOTOWANIE SYGNAŁÓW ---
+    ecg_signal = df['ecg'].values
     resp_signal = df['oddech'].values
     resp_smooth = savgol_filter(resp_signal, 101, 3) 
     
-    # Detekcja maksimów oddechowych (szczyty wdechu)
-    # distance dopasowany tak, by nie łapać szumów (np. 2000 ms przy fs=1000)
+    # --- POPRAWIONA DETEKCJA PIKÓW R ---
+    # height=1.5 eliminuje załamki T i ST
+    # distance=500 przy fs=1000 Hz oznacza min. 0.5s przerwy między uderzeniami
+    clean_peaks_r, _ = signal.find_peaks(ecg_signal, height=1.5, distance=500)
+    
+    # Detekcja maksimów oddechowych
     peaks_resp, _ = signal.find_peaks(resp_smooth, distance=2000, prominence=0.05)
 
-    if len(peaks) > 0:
+    if len(clean_peaks_r) > 0:
         # --- WYKRES 1: ODDECH + MAKSIMA ---
         st.subheader("1. Sygnał oddechowy (mV) z zaznaczonymi szczytami")
         fig1 = go.Figure()
@@ -1021,50 +1026,46 @@ if 'df' in locals():
         fig1.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Potencjał [mV]")
         st.plotly_chart(fig1, use_container_width=True)
 
-        # --- WYKRES 2: EKG + PIKI R ---
-        st.subheader("2. Sygnał EKG z zaznaczonymi załamkami R")
-        # Wykorzystujemy przefiltrowany sygnał EKG (jeśli masz zmienną clean_ecg)
+        # --- WYKRES 2: EKG + TYLKO PIKI R (>1.5mV) ---
+        st.subheader("2. Sygnał EKG (Tylko piki R > 1.5mV)")
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=df['czas'], y=df['ecg'], name="EKG", line=dict(color="white", width=1)))
-        fig2.add_trace(go.Scatter(x=df['czas'].iloc[peaks], y=df['ecg'].iloc[peaks], 
-                                 mode='markers', name="Pik R", marker=dict(color=zielony_neon, size=6)))
+        fig2.add_trace(go.Scatter(x=df['czas'], y=ecg_signal, name="EKG", line=dict(color="white", width=0.8)))
+        fig2.add_trace(go.Scatter(x=df['czas'].iloc[clean_peaks_r], y=ecg_signal[clean_peaks_r], 
+                                 mode='markers', name="Pik R", marker=dict(color=zielony_neon, size=8, symbol="circle")))
         fig2.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Potencjał [mV]")
         st.plotly_chart(fig2, use_container_width=True)
 
-        # --- WYKRES 3: ODDECH + PIKI R W CZASIE ---
+        # --- WYKRES 3: ODDECH + CZYSZTE PIKI R ---
         st.subheader("3. Piki R nałożone na krzywą oddechową")
         fig3 = go.Figure()
-        fig3.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Oddech (wygładzony)", line=dict(color=niebieski_jasny, opacity=0.6)))
-        fig3.add_trace(go.Scatter(x=df['czas'].iloc[peaks], y=resp_smooth[peaks], 
-                                 mode='markers', name="Moment uderzenia serca", marker=dict(color=zielony_neon, size=7, symbol="x")))
+        fig3.add_trace(go.Scatter(x=df['czas'], y=resp_smooth, name="Oddech", line=dict(color=niebieski_jasny, opacity=0.6)))
+        fig3.add_trace(go.Scatter(x=df['czas'].iloc[clean_peaks_r], y=resp_smooth[clean_peaks_r], 
+                                 mode='markers', name="Uderzenie serca", marker=dict(color=zielony_neon, size=8, symbol="x")))
         fig3.update_layout(height=350, template="plotly_dark", xaxis_title="Czas [s]", yaxis_title="Oddech [mV]")
         st.plotly_chart(fig3, use_container_width=True)
 
         # --- WYKRES 4: SYNCHROGRAM (0 do 2Pi) ---
         st.subheader("4. Synchrogram (Faza oddechu 0 - 2π)")
-        
-        # Obliczanie fazy Hilberta
         analytic_signal = signal.hilbert(resp_smooth)
         phase = np.angle(analytic_signal) 
-        # Przesunięcie na zakres 0 - 2Pi
-        phase_2pi = np.mod(phase, 2 * np.pi)
+        phase_2pi = np.mod(phase, 2 * np.pi) # Konwersja na zakres 0 - 2pi
         
-        phases_at_r = phase_2pi[peaks]
-        times_at_r = df['czas'].iloc[peaks].values
+        phases_at_r = phase_2pi[clean_peaks_r]
+        times_at_r = df['czas'].iloc[clean_peaks_r].values
 
         fig4 = go.Figure()
         fig4.add_trace(go.Scatter(x=times_at_r, y=phases_at_r, mode='markers', 
-                                 marker=dict(color=zielony_neon, size=5, opacity=0.8)))
+                                 marker=dict(color=zielony_neon, size=6, opacity=0.9)))
         fig4.update_layout(
             height=450, template="plotly_dark",
             xaxis_title="Czas [s]", 
             yaxis_title="Faza oddechu [rad]",
-            yaxis=dict(tickvals=[0, np.pi, 2*np.pi], ticktext=["0", "π", "2π"])
+            yaxis=dict(tickvals=[0, np.pi, 2*np.pi], ticktext=["0", "π", "2π"], range=[-0.1, 2*np.pi + 0.1])
         )
         st.plotly_chart(fig4, use_container_width=True)
         
     else:
-        st.warning("⚠️ Brak wykrytych załamków R. Ustaw parametry w Sekcji 3!")
+        st.warning("⚠️ Nie znaleziono pików powyżej 1.5mV. Sprawdź sygnał EKG!")
 
 
 

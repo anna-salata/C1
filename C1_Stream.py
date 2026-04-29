@@ -991,10 +991,7 @@ with tab1:
     st.markdown(f'<hr style="margin-top: 20px; height:5px; border:none; background-color:{lekki_szary};"/>', unsafe_allow_html=True)
 
 
-
 with tab2:
-
-    nowe_dane = wybor in ["Oddech standardowy", "Oddech co 10s"]
     import numpy as np
     from scipy.signal import find_peaks, hilbert
     import plotly.graph_objects as go

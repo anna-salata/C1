@@ -194,7 +194,7 @@ with tab1:
         
     with col1:
         df_display = df.copy()
-        if any(x in wybor_badania for x in ['Wysiłkowe', 'Spoczynkowe']): 
+        if any(x in wybor for x in ['Wysiłkowe', 'Spoczynkowe']): 
             if 'oddech' in df_display.columns:
                 df_display = df_display.drop(columns=['oddech'])
         

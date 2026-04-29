@@ -193,20 +193,11 @@ with tab1:
     col1, col2, col3 = st.columns([2.0,1.5,5])
         
     with col1:
-        # Sprawdzamy co wybrał użytkownik w menu bocznym (selectbox)
-        # Zakładam, że zmienna z Twoim wyborem nazywa się 'rodzaj_badania'
-        # Jeśli Twoja zmienna nazywa się inaczej, np. 'opcja', podmień nazwę poniżej:
-        
-        df_display = df.copy() # robimy kopię, żeby nie psuć oryginalnych danych
-        
-        if 'Spoczynkowe' in wybor: # jeśli wybrana opcja zawiera słowo Spoczynkowe
+        df_display = df.copy()
+        if any(x in wybor_badania for x in ['Wysiłkowe', 'Spoczynkowe']): 
             if 'oddech' in df_display.columns:
                 df_display = df_display.drop(columns=['oddech'])
         
-        # Opcjonalnie: upewniamy się, że nie wyświetlamy też kolumny 'typ' lub 'typ_analizy'
-        cols_to_hide = ['typ', 'typ_analizy']
-        df_display = df_display.drop(columns=[c for c in cols_to_hide if c in df_display.columns])
-
         # Wyświetlamy tabelę
         st.dataframe(df_display, use_container_width=True)
             

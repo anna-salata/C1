@@ -1044,7 +1044,27 @@ if 'df' in locals():
         st.subheader("4. Synchrogram (Faza oddechu 0 - 2π)")
         
         # Obliczanie fazy Hilberta
-        analytic_signal = signal.hilbert(
+        analytic_signal = signal.hilbert(resp_smooth)
+        phase = np.angle(analytic_signal) 
+        # Przesunięcie na zakres 0 - 2Pi
+        phase_2pi = np.mod(phase, 2 * np.pi)
+        
+        phases_at_r = phase_2pi[peaks]
+        times_at_r = df['czas'].iloc[peaks].values
+
+        fig4 = go.Figure()
+        fig4.add_trace(go.Scatter(x=times_at_r, y=phases_at_r, mode='markers', 
+                                 marker=dict(color=zielony_neon, size=5, opacity=0.8)))
+        fig4.update_layout(
+            height=450, template="plotly_dark",
+            xaxis_title="Czas [s]", 
+            yaxis_title="Faza oddechu [rad]",
+            yaxis=dict(tickvals=[0, np.pi, 2*np.pi], ticktext=["0", "π", "2π"])
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+        
+    else:
+        st.warning("⚠️ Brak wykrytych załamków R. Ustaw parametry w Sekcji 3!")
 
 
 

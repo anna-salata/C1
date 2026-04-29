@@ -994,179 +994,126 @@ with tab1:
     
     st.markdown(f'<hr style="margin-top: 20px; height:5px; border:none; background-color:{lekki_szary};"/>', unsafe_allow_html=True)
 
-#%%-------------------------SEKCJA 5 - ---------------------------
+#%%-------------------------SEKCJA 5 - SYNCHROGRAM ---------------------------
 with tab2:
-
+    # Zakładam, że zmienna 'wybor' pochodzi z Twojego selectboxa
     nowe_dane = wybor in ["Oddech standardowy", "Oddech co 10s"]
 
     if not nowe_dane:
         st.info("👉 Ta zakładka działa tylko dla danych z oddechem.")
-    
     else:
         import numpy as np
         from scipy.signal import find_peaks, hilbert
         import plotly.graph_objects as go
 
+        # Pobranie sygnałów
         czas = df['czas'].values
         oddech = df['oddech'].values
         ecg = df['ecg'].values
 
-        # =========================
-        # 1. ODDECH + PIKI
-        # =========================
-        st.markdown("### 🫁 Sygnał oddechowy")
-
+        # =====================================================================
+        # 1. DETEKCJA PIKÓW (Ważne: ujednolicone nazwy!)
+        # =====================================================================
+        
+        # Piki oddechowe
         peaks_resp, _ = find_peaks(
             oddech,
             distance=200,
             height=np.mean(oddech)
         )
 
-        fig_resp = go.Figure()
-        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
-        fig_resp.add_trace(go.Scatter(
-            x=czas[peaks_resp],
-            y=oddech[peaks_resp],
-            mode='markers',
-            name='Piki oddechu',
-            marker=dict(color='red', size=6)
-        ))
-
-        st.plotly_chart(fig_resp, use_container_width=True)
-
-
-        # =========================
-        # 2. EKG + R PEAKS
-        # =========================
-        st.markdown("### ❤️ EKG + R-peaki")
-
+        # Piki EKG (R-peaks) - nazwa zmiennej to peaks_ecg
         peaks_ecg, _ = find_peaks(
             ecg,
             distance=400,
             height=np.mean(ecg)
         )
 
-        fig_ecg = go.Figure()
-        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG'))
-        fig_ecg.add_trace(go.Scatter(
-            x=czas[peaks_ecg],
-            y=ecg[peaks_ecg],
-            mode='markers',
-            name='R-peaki',
-            marker=dict(color='green', size=6)
-        ))
+        # =====================================================================
+        # 2. WYKRESY (Oddech, EKG, Mix)
+        # =====================================================================
+        
+        # --- Wykres 1: Oddech ---
+        st.markdown("### 🫁 Sygnał oddechowy")
+        fig_resp = go.Figure()
+        fig_resp.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color=niebieski_jasny)))
+        fig_resp.add_trace(go.Scatter(x=czas[peaks_resp], y=oddech[peaks_resp], mode='markers', name='Piki oddechu', marker=dict(color='red', size=8)))
+        fig_resp.update_layout(template="plotly_dark", height=300)
+        st.plotly_chart(fig_resp, use_container_width=True)
 
+        # --- Wykres 2: EKG ---
+        st.markdown("### ❤️ EKG + R-peaki")
+        fig_ecg = go.Figure()
+        fig_ecg.add_trace(go.Scatter(x=czas, y=ecg, mode='lines', name='EKG', line=dict(color=zielony_neon)))
+        fig_ecg.add_trace(go.Scatter(x=czas[peaks_ecg], y=ecg[peaks_ecg], mode='markers', name='R-peaki', marker=dict(color='red', size=6)))
+        fig_ecg.update_layout(template="plotly_dark", height=300)
         st.plotly_chart(fig_ecg, use_container_width=True)
 
-
-        # =========================
-        # 3. ODDECH + R PEAKS
-        # =========================
+        # --- Wykres 3: R na oddechu ---
         st.markdown("### 🔄 Oddech + R-peaki")
-
         fig_mix = go.Figure()
-        fig_mix.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech'))
-
-        fig_mix.add_trace(go.Scatter(
-            x=czas[peaks_ecg],
-            y=oddech[peaks_ecg],
-            mode='markers',
-            name='R na oddechu',
-            marker=dict(color='yellow', size=6)
-        ))
-
+        fig_mix.add_trace(go.Scatter(x=czas, y=oddech, mode='lines', name='Oddech', line=dict(color=niebieski_jasny)))
+        fig_mix.add_trace(go.Scatter(x=czas[peaks_ecg], y=oddech[peaks_ecg], mode='markers', name='R na oddechu', marker=dict(color='yellow', size=6)))
+        fig_mix.update_layout(template="plotly_dark", height=300)
         st.plotly_chart(fig_mix, use_container_width=True)
 
+        # =====================================================================
+        # 3. OBLICZENIA DO SYNCHROGRAMU (ZĄBKOWANEGO)
+        # =====================================================================
+        
+        relative_times = []
+        wrapped_phases = []
+        cycle_start_times = []
 
-        # --- PRZYGOTOWANIE DANYCH DO SYNCHROGRAMU KOŁOWEGO (ZĄBKOWANEGO) ---
-        if len(peaks_resp) > 1 and len(peaks_r) > 0:
-            # 1. Tworzymy pary cykli oddechowych (start -> stop)
+        # UŻYWAMY POPRAWNEJ NAZWY: peaks_ecg zamiast peaks_r
+        if len(peaks_resp) > 1 and len(peaks_ecg) > 0:
             breath_cycles = list(zip(peaks_resp[:-1], peaks_resp[1:]))
             
-            # 2. Listy na wyniki
-            relative_times = []
-            wrapped_phases = []
-            cycle_start_times = []
-        
-            # 3. Dla każdego uderzenia serca (piku R)...
-            for r_peak in peaks_r:
-                # ...szukamy, w którym cyklu oddechowym się znajduje
+            for r_peak in peaks_ecg:
                 for start_idx, end_idx in breath_cycles:
                     if start_idx <= r_peak < end_idx:
-                        # Obliczamy czas trwania tego konkretnego cyklu [próbki]
                         cycle_duration = end_idx - start_idx
-                        
-                        # Obliczamy czas względny R-piku wewnątrz cyklu (od 0 do 1)
                         relative_pos = (r_peak - start_idx) / cycle_duration
-                        
-                        # Przeliczamy na fazę od 0 do 2PI
                         phase_rad = relative_pos * 2 * np.pi
                         
-                        # Czas rzeczywisty R-piku [s]
                         real_time = df['czas'].iloc[r_peak]
-                        
                         relative_times.append(real_time)
                         wrapped_phases.append(phase_rad)
                         
-                        # Zapisujemy czas startu cyklu [s], żeby narysować pionową linię
                         if df['czas'].iloc[start_idx] not in cycle_start_times:
                             cycle_start_times.append(df['czas'].iloc[start_idx])
-                        
-                        break # znaleźliśmy cykl, nie musimy szukać dalej
-        # =========================
-        # 4. SYNCHROGRAM
-        # =========================
+                        break
+
+        # =====================================================================
+        # 4. WYŚWIETLANIE SYNCHROGRAMU
+        # =====================================================================
         st.markdown("### 📡 Synchrogram")
 
-                # --- NOWY KOD SYNCHROGRAMU (ZĄBKOWANEGO) ---
         if len(relative_times) > 0:
             fig_synch_new = go.Figure()
         
-            # 1. Dodajemy pionowe, niebieskie linie przerywane (poczatek cyklu)
-            # To jest ten kluczowy element wizualny ze wzoru
+            # Pionowe linie (początek cyklu)
             for start_t in cycle_start_times:
                 fig_synch_new.add_vline(x=start_t, line_width=1, line_dash="dash", line_color="#00CCFF", opacity=0.3)
         
-            # 2. Dodajemy piki R (zielone kropki)
+            # Kropki z R-peaks
             fig_synch_new.add_trace(go.Scatter(
                 x=relative_times, 
                 y=wrapped_phases, 
                 mode='markers', 
                 name="Zalamek R", 
-                marker=dict(
-                    color=zielony_neon, # neonowy zielony
-                    size=10, 
-                    opacity=0.9,
-                    line=dict(width=1, color='white') # obwódka dla lepszej widoczności
-                )
+                marker=dict(color=zielony_neon, size=10, opacity=0.9, line=dict(width=1, color='white'))
             ))
         
-            # 3. Stylizacja osi i layoutu (laboratoryjny styl)
             fig_synch_new.update_layout(
                 title="Synchrogram - faza oddechu wewnątrz cykli (0 - 2π)",
                 height=450,
                 template="plotly_dark",
                 xaxis_title="Czas badania [s]",
                 yaxis_title="Faza [rad]",
-                hovermode="closest",
-                
-                # Ustawienia osi Y, żeby pokazywała Pi, tak jak na wzorze
-                yaxis=dict(
-                    tickvals=[0, np.pi, 2 * np.pi],
-                    ticktext=["0", "π", "2π"],
-                    range=[-0.2, 2 * np.pi + 0.2] # mały margines, żeby punkty na krawędziach nie były ucięte
-                ),
-                
-                # Legenda w poziomie, na dole (jak na wzorze)
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=-0.3,
-                    xanchor="center",
-                    x=0.5
-                )
+                yaxis=dict(tickvals=[0, np.pi, 2 * np.pi], ticktext=["0", "π", "2π"], range=[-0.2, 2 * np.pi + 0.2]),
+                legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5)
             )
-            
             st.plotly_chart(fig_synch_new, use_container_width=True)
         else:
-            st.warning("Nie udało się wyliczyć fazy względnej. Upewnij się, że wykryto piki R i piki oddechu.")
+            st.warning("Nie udało się wyliczyć fazy. Sprawdź parametry detekcji pików.")

@@ -1019,9 +1019,6 @@ with tab2:
             phase_2pi = np.mod(np.angle(analytic_signal), 2 * np.pi)
 
             # TUTAJ WSTAW KOD WYKRESÓW (fig1, fig2, fig3, fig4), który wysłałem wcześniej
-            # ...
-        else:
-            st.error("Błąd: Nie znaleziono kolumn 'oddech' lub 'ecg' w wczytanym pliku!")
             
             # Detekcja pików na podstawie wartości z suwaków
             peaks_resp, _ = find_peaks(resp_smooth, height=prog_oddech, distance=dist_oddech)
@@ -1078,6 +1075,7 @@ with tab2:
             # Przycisk pobierania na dole sidebaru (zgodnie ze wzorem)
             st.sidebar.markdown("---")
             st.sidebar.download_button("📩 Pobierz R-peaks i fazy (.csv)", "dane_testowe", "wyniki.csv")
-
+    # ...
         else:
-            st.info("Wybierz badanie 'Oddechowe' w panelu bocznym, aby zobaczyć tę analizę.")
+            st.error("Błąd: Nie znaleziono kolumn 'oddech' lub 'ecg' w wczytanym pliku!")
+            

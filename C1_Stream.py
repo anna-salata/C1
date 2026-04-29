@@ -21,7 +21,7 @@ from plotly.subplots import make_subplots
 import neurokit2 as nk
 from PyEMD import EMD
 import io  # Potrzebne do eksportu pliku tekstowego
-import emd 
+import EMD-signal as emd
 from scipy import ndimage
 
 

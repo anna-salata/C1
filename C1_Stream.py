@@ -35,8 +35,6 @@ from scipy import ndimage
 #%%--------------------------------Ustawienia wstępne--------------------------
 
 st.set_page_config(layout="wide")
-
-# Podnieś limit, aby obsłużyć Twoje 434 500 komórek (ustawmy z zapasem np. 500k)
 pd.set_option("styler.render.max_elements", 500000)
 
 #---------------------------Definicje Kolorów do których potem się odwołujemy
@@ -117,8 +115,6 @@ st.markdown(f"""
     
 #%%--------------------------------Ładowanie pliku-----------------------------
 
-# --- Sekcja wczytywania danych (Podmień linie 80-111) ---
-
 @st.cache_data
 def load_my_data(file_choice):
     # GitHub nie widzi Twojego dysku C:, widzi tylko pliki w repozytorium.
@@ -156,7 +152,6 @@ tab1, tab2 = st.tabs(["📊 HRV", "🫁 Oddech + EKG"])
 
 # --- Koniec sekcji wczytywania ---
 with tab1:
-    # TWÓJ OBECNY KOD (nic nie zmieniaj)
 #%%---------------------------------Tytuł i ramka------------------------------
     st.markdown(f"""
         <style>
@@ -287,9 +282,7 @@ with tab1:
     
         with st.container(border=True):
             st.plotly_chart(fig, use_container_width=True)
-        # Dodajemy grubszą linię dla oddzielenia (tę, którą robiliśmy wcześniej)
-    
-    
+        
         
     st.markdown("""
         <hr style="margin-top: -10px;height:5px; border:none; color:#444444; background-color:#444444;" />

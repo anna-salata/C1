@@ -862,7 +862,7 @@ with tab1:
         st.markdown("###### Parametry dekompozycji EMD")
         
         max_imfs_val = st.slider("Maksymalna liczba IMF", min_value=5, max_value=11, value=9, step=1)
-        imfs_to_remove = st.slider("Liczba ostatnich IMF do usunięcia (modulacja oddechowa)", 
+        imfs_to_remove = st.slider("Liczba ostatnich IMF do usunięcia", 
                                    min_value=1, max_value=6, value=2, step=1)
         
         fs = 1000  # Częstotliwość próbkowania
@@ -927,7 +927,7 @@ with tab1:
             st.plotly_chart(fig_imfs, use_container_width=True)
             
             # ==================== 2. Sygnał oczyszczony ====================
-            st.markdown("###### Sygnał EKG po usunięciu modulacji oddechowej")
+            st.markdown("###### Sygnał EKG po usunięciu ostatnich IMF")
             
             # Obliczanie trendu (modulacji) z ostatnich IMF-ów
             modulacja = np.sum(imf[:, -imfs_to_remove:], axis=1)

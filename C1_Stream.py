@@ -214,13 +214,13 @@ with tab1:
         "Liczba próbek": [ile_zostalo, ile_wycieto]}
     
     
-        # 3. Tworzenie wykresu Plotly Express w kolorach różowo-fioletowych
+        # 3. Tworzenie wykresu Plotly Express 
         fig_pie = px.pie(
         dane_pie, 
         values='Liczba próbek', 
         names='Status',
         hole=0.4, 
-        # Tutaj ustawiamy Twoje kolory: różowy dla wybranego fragmentu, fioletowy dla reszty
+        # Tutaj ustawiamy kolory
         color_discrete_sequence=[zielony_neon, niebieski_jasny] 
     )
     
@@ -245,22 +245,22 @@ with tab1:
             
         fig = go.Figure()
     
-        # 2. Sygnał w tle (całość) - zróbmy go fioletowym/szarym
+        # 2. Sygnał w tle (całość) -
         fig.add_trace(go.Scatter(
             x=df_stary['czas'], 
             y=df_stary['ecg'], 
             mode='lines',
             name='Pozostała część',
-            line=dict(color=zielony_neon, width=1) # Cienka fioletowa linia
+            line=dict(color=zielony_neon, width=1) 
     ))
     
-        # 3. Wybrany fragment (do analizy) - zróbmy go RÓŻOWYM lub ZIELONYM
+        # 3. Wybrany fragment (do analizy) -
         fig.add_trace(go.Scatter(
             x=df['czas'], 
             y=df['ecg'],    
             mode='lines',
             name='Fragment do analizy',
-            line=dict(color=niebieski_jasny, width=3) # Gruba różowa linia
+            line=dict(color=niebieski_jasny, width=3) 
     ))
     
             # 4. Stylizacja wykresu

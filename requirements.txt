@@ -7,3 +7,4 @@ seaborn
 plotly
 neurokit2
 EMD-signal
+emd

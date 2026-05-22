@@ -19,7 +19,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import neurokit2 as nk
-from PyEMD import EMD as emd
+from PyEMD import EMD
+import emd
 import io  # Potrzebne do eksportu pliku tekstowego
 from scipy import ndimage
 

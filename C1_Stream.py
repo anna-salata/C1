@@ -853,7 +853,7 @@ with tab1:
         <hr style="margin-top: 30px; height:6px; border:none; background-color:{zielony};"/>
     """, unsafe_allow_html=True)
     
-    st.markdown(f'<p style="font-size: 26px; font-weight: bold; color:{zielony};">Usuwanie modulacji oddechowej metodą EMD</p>', 
+    st.markdown(f'<p style="font-size: 26px; font-weight: bold; color:{zielony};">Przetwarzanie sygnału metodą EMD</p>', 
                 unsafe_allow_html=True)
     
     col_ctrl, col_main = st.columns([2.2, 7.8])
